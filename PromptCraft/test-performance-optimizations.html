@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Performance Optimizations Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: 'Courier New', monospace;
+            background: #1a1a1a;
+            color: #ffffff;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            color: #87ceeb;
+            border-bottom: 2px solid #4a4a4a;
+            padding-bottom: 10px;
+        }
+        
+        .section {
+            background: #2a2a2a;
+            border: 2px solid #4a4a4a;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .section h2 {
+            color: #ffd700;
+            margin-top: 0;
+        }
+        
+        .test-controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin: 15px 0;
+        }
+        
+        button {
+            padding: 10px 20px;
+            background: linear-gradient(180deg, #4a4a4a 0%, #3a3a3a 100%);
+            border: 2px solid #5a5a5a;
+            border-radius: 4px;
+            color: #ffffff;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+        }
+        
+        button:hover {
+            background: linear-gradient(180deg, #5a5a5a 0%, #4a4a4a 100%);
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .stats {
+            background: #1a1a1a;
+            border: 1px solid #4a4a4a;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px solid #333;
+        }
+        
+        .stat-row:last-child {
+            border-bottom: none;
+        }
+        
+        .stat-label {
+            color: #87ceeb;
+        }
+        
+        .stat-value {
+            color: #ffd700;
+            font-weight: bold;
+        }
+        
+        .log {
+            background: #1a1a1a;
+            border: 1px solid #4a4a4a;
+            border-radius: 4px;
+            padding: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-size: 12px;
+        }
+        
+        .log-entry {
+            padding: 3px 0;
+            border-bottom: 1px solid #2a2a2a;
+        }
+        
+        .log-entry.success {
+            color: #90ee90;
+        }
+        
+        .log-entry.warning {
+            color: #ffd700;
+        }
+        
+        .log-entry.error {
+            color: #ff6b6b;
+        }
+        
+        .log-entry.info {
+            color: #87ceeb;
+        }
+        
+        #game-canvas {
+            border: 2px solid #4a4a4a;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Performance Optimizations Test</h1>
+        
+        <div class="section">
+            <h2>📊 Performance Statistics</h2>
+            <div class="stats" id="stats">
+                <div class="stat-row">
+                    <span class="stat-label">Total Assets:</span>
+                    <span class="stat-value" id="stat-total">0</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Visible Assets:</span>
+                    <span class="stat-value" id="stat-visible">0</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Culled Assets:</span>
+                    <span class="stat-value" id="stat-culled">0</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Pool Size:</span>
+                    <span class="stat-value" id="stat-pool">0</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Active Sprites:</span>
+                    <span class="stat-value" id="stat-active">0</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Storage Used:</span>
+                    <span class="stat-value" id="stat-storage">0 KB</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>🎮 Test Controls</h2>
+            <div class="test-controls">
+                <button onclick="testSpritePooling()">Test Sprite Pooling</button>
+                <button onclick="testCulling()">Test Culling System</button>
+                <button onclick="testAssetLimits()">Test Asset Limits</button>
+                <button onclick="testStorageOptimization()">Test Storage Optimization</button>
+                <button onclick="testLazyLoading()">Test Lazy Loading</button>
+                <button onclick="clearAll()">Clear All</button>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>📝 Test Log</h2>
+            <div class="log" id="log"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import Phaser from './node_modules/phaser/dist/phaser.esm.js';
+        import SpritePool from './src/managers/SpritePool.js';
+        import WorldManager from './src/managers/WorldManager.js';
+        import StorageService from './src/services/StorageService.js';
+        import { GAME_CONFIG } from './src/config/gameConfig.js';
+
+        // Test scene
+        class TestScene extends Phaser.Scene {
+            constructor() {
+                super({ key: 'TestScene' });
+            }
+
+            preload() {
+                // Create test textures
+                const graphics = this.add.graphics();
+                
+                // Red square
+                graphics.fillStyle(0xff0000, 1);
+                graphics.fillRect(0, 0, 32, 32);
+                graphics.generateTexture('test-red', 32, 32);
+                
+                // Blue square
+                graphics.clear();
+                graphics.fillStyle(0x0000ff, 1);
+                graphics.fillRect(0, 0, 32, 32);
+                graphics.generateTexture('test-blue', 32, 32);
+                
+                // Green square
+                graphics.clear();
+                graphics.fillStyle(0x00ff00, 1);
+                graphics.fillRect(0, 0, 32, 32);
+                graphics.generateTexture('test-green', 32, 32);
+                
+                graphics.destroy();
+            }
+
+            create() {
+                // Initialize managers
+                window.storageService = new StorageService();
+                window.worldManager = new WorldManager(this, window.storageService);
+                window.spritePool = window.worldManager.spritePool;
+                
+                log('Managers initialized', 'success');
+                updateStats();
+            }
+
+            update() {
+                // Update culling
+                if (window.worldManager) {
+                    window.worldManager.updateCulling();
+                }
+            }
+        }
+
+        // Initialize Phaser game
+        const config = {
+            type: Phaser.AUTO,
+            parent: 'game-canvas',
+            width: 800,
+            height: 600,
+            backgroundColor: '#1a1a1a',
+            physics: {
+                default: 'arcade',
+                arcade: {
+                    gravity: { y: 0 },
+                    debug: false
+                }
+            },
+            scene: TestScene
+        };
+
+        const game = new Phaser.Game(config);
+
+        // Logging function
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            const timestamp = new Date().toLocaleTimeString();
+            entry.textContent = `[${timestamp}] ${message}`;
+            logDiv.insertBefore(entry, logDiv.firstChild);
+            
+            // Keep only last 50 entries
+            while (logDiv.children.length > 50) {
+                logDiv.removeChild(logDiv.lastChild);
+            }
+        }
+
+        // Update statistics
+        function updateStats() {
+            if (!window.worldManager || !window.spritePool) return;
+            
+            const cullingStats = window.worldManager.getCullingStats();
+            const poolStats = window.spritePool.getStats();
+            const assetInfo = window.worldManager.getAssetCountInfo();
+            
+            document.getElementById('stat-total').textContent = assetInfo.current;
+            document.getElementById('stat-visible').textContent = cullingStats.visible;
+            document.getElementById('stat-culled').textContent = cullingStats.culled;
+            document.getElementById('stat-pool').textContent = poolStats.totalPooledSprites;
+            document.getElementById('stat-active').textContent = poolStats.activeSprites;
+            
+            // Get storage info
+            window.storageService.getStorageInfo().then(info => {
+                if (info) {
+                    const usageKB = Math.round(info.usage / 1024);
+                    document.getElementById('stat-storage').textContent = `${usageKB} KB (${info.percentUsed.toFixed(1)}%)`;
+                }
+            });
+        }
+
+        // Test sprite pooling
+        window.testSpritePooling = function() {
+            log('Testing sprite pooling...', 'info');
+            
+            const scene = game.scene.scenes[0];
+            const textures = ['test-red', 'test-blue', 'test-green'];
+            const sprites = [];
+            
+            // Create 50 sprites
+            for (let i = 0; i < 50; i++) {
+                const x = 100 + (i % 10) * 40;
+                const y = 100 + Math.floor(i / 10) * 40;
+                const texture = textures[i % 3];
+                
+                const sprite = window.spritePool.getFromPool(texture, x, y);
+                sprites.push({ sprite, texture });
+            }
+            
+            log(`Created 50 sprites using pool`, 'success');
+            updateStats();
+            
+            // Return sprites to pool after 2 seconds
+            setTimeout(() => {
+                sprites.forEach(({ sprite, texture }) => {
+                    window.spritePool.returnToPool(sprite, texture);
+                });
+                log(`Returned 50 sprites to pool`, 'success');
+                updateStats();
+            }, 2000);
+        };
+
+        // Test culling system
+        window.testCulling = function() {
+            log('Testing culling system...', 'info');
+            
+            const scene = game.scene.scenes[0];
+            
+            // Place assets across a large area
+            for (let i = 0; i < 100; i++) {
+                const x = Math.random() * 2000;
+                const y = Math.random() * 2000;
+                
+                window.worldManager.addPlacedAsset({
+                    assetId: `test-asset-${i}`,
+                    textureKey: 'test-red',
+                    position: { x, y }
+                });
+            }
+            
+            log(`Placed 100 assets across large area`, 'success');
+            updateStats();
+            
+            // Move camera to show culling
+            setTimeout(() => {
+                scene.cameras.main.scrollX = 1000;
+                scene.cameras.main.scrollY = 1000;
+                log(`Moved camera - culling should activate`, 'info');
+                
+                setTimeout(() => {
+                    updateStats();
+                    const stats = window.worldManager.getCullingStats();
+                    log(`Culling active: ${stats.culled} assets culled, ${stats.visible} visible`, 'success');
+                }, 100);
+            }, 1000);
+        };
+
+        // Test asset limits
+        window.testAssetLimits = function() {
+            log('Testing asset limits...', 'info');
+            
+            const info = window.worldManager.getAssetCountInfo();
+            log(`Current: ${info.current}/${info.max} assets (${info.percentage}%)`, 'info');
+            
+            if (info.isAtLimit) {
+                log(`At asset limit! Cannot place more assets.`, 'error');
+                return;
+            }
+            
+            if (info.isWarning) {
+                log(`Warning: Approaching asset limit (${info.current}/${info.threshold})`, 'warning');
+            }
+            
+            // Try to add assets up to warning threshold
+            const toAdd = Math.min(10, GAME_CONFIG.ASSET_WARNING_THRESHOLD - info.current);
+            
+            for (let i = 0; i < toAdd; i++) {
+                const x = 100 + (i % 10) * 50;
+                const y = 100 + Math.floor(i / 10) * 50;
+                
+                const result = window.worldManager.addPlacedAsset({
+                    assetId: `limit-test-${Date.now()}-${i}`,
+                    textureKey: 'test-blue',
+                    position: { x, y }
+                });
+                
+                if (!result) {
+                    log(`Failed to add asset ${i + 1} - limit reached`, 'error');
+                    break;
+                }
+            }
+            
+            updateStats();
+            const newInfo = window.worldManager.getAssetCountInfo();
+            log(`Added ${toAdd} assets. New count: ${newInfo.current}/${newInfo.max}`, 'success');
+        };
+
+        // Test storage optimization
+        window.testStorageOptimization = function() {
+            log('Testing storage optimization...', 'info');
+            
+            // Create test data
+            const testAssets = [];
+            for (let i = 0; i < 10; i++) {
+                testAssets.push({
+                    id: `test-${i}`,
+                    name: `Test Asset ${i}`,
+                    imageData: 'data:image/png;base64,' + 'A'.repeat(1000), // Fake base64
+                    frames: []
+                });
+            }
+            
+            // Test normal save
+            const start1 = performance.now();
+            window.storageService.saveAssetLibrary(testAssets, false);
+            const time1 = performance.now() - start1;
+            log(`Normal save: ${time1.toFixed(2)}ms`, 'info');
+            
+            // Test lazy loading save
+            const start2 = performance.now();
+            window.storageService.saveAssetLibrary(testAssets, true);
+            const time2 = performance.now() - start2;
+            log(`Lazy loading save: ${time2.toFixed(2)}ms`, 'info');
+            
+            // Test cleanup
+            const cleaned = window.storageService.cleanupOrphanedData();
+            log(`Cleaned up ${cleaned} orphaned entries`, 'success');
+            
+            updateStats();
+        };
+
+        // Test lazy loading
+        window.testLazyLoading = function() {
+            log('Testing lazy loading...', 'info');
+            
+            // Load without images
+            const start1 = performance.now();
+            const assetsNoImages = window.storageService.loadAssetLibrary(false);
+            const time1 = performance.now() - start1;
+            log(`Load without images: ${time1.toFixed(2)}ms (${assetsNoImages.length} assets)`, 'info');
+            
+            // Load with images
+            const start2 = performance.now();
+            const assetsWithImages = window.storageService.loadAssetLibrary(true);
+            const time2 = performance.now() - start2;
+            log(`Load with images: ${time2.toFixed(2)}ms (${assetsWithImages.length} assets)`, 'info');
+            
+            const speedup = ((time2 - time1) / time2 * 100).toFixed(1);
+            log(`Lazy loading is ${speedup}% faster for initial load`, 'success');
+        };
+
+        // Clear all
+        window.clearAll = function() {
+            if (window.worldManager) {
+                window.worldManager.clearWorld(true, true);
+                log('Cleared all assets', 'success');
+                updateStats();
+            }
+        };
+
+        // Update stats periodically
+        setInterval(updateStats, 1000);
+    </script>
+</body>
+</html>

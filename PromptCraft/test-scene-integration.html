@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scene Integration Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            font-family: 'Courier New', monospace;
+            color: #fff;
+        }
+        #game {
+            width: 100vw;
+            height: 100vh;
+        }
+        #test-info {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border: 2px solid #4a4a4a;
+            border-radius: 8px;
+            font-size: 12px;
+            max-width: 300px;
+            z-index: 2000;
+        }
+        #test-info h3 {
+            margin: 0 0 10px 0;
+            color: #87ceeb;
+        }
+        #test-info ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+        #test-info li {
+            margin: 5px 0;
+        }
+        .success {
+            color: #90ee90;
+        }
+        .pending {
+            color: #ffd700;
+        }
+    </style>
+</head>
+<body>
+    <div id="game"></div>
+    <div id="test-info">
+        <h3>🧪 Scene Integration Test</h3>
+        <ul>
+            <li id="boot-scene" class="pending">⏳ BootScene initialization</li>
+            <li id="main-menu" class="pending">⏳ MainMenuScene creation</li>
+            <li id="game-scene" class="pending">⏳ GameScene with managers</li>
+            <li id="ui-scene" class="pending">⏳ UIScene overlay</li>
+            <li id="event-system" class="pending">⏳ Event system wiring</li>
+        </ul>
+        <p style="margin-top: 15px; font-size: 11px; color: #888;">
+            This test verifies that all scenes are properly integrated and can communicate via events.
+        </p>
+    </div>
+
+    <script type="module">
+        import Phaser from './node_modules/phaser/dist/phaser.esm.js';
+        import BootScene from './src/scenes/BootScene.js';
+        import MainMenuScene from './src/scenes/MainMenuScene.js';
+        import GameScene from './src/scenes/GameScene.js';
+        import UIScene from './src/scenes/UIScene.js';
+
+        // Test tracking
+        const tests = {
+            bootScene: false,
+            mainMenu: false,
+            gameScene: false,
+            uiScene: false,
+            eventSystem: false
+        };
+
+        function updateTest(testId, success) {
+            tests[testId] = success;
+            const element = document.getElementById(testId.replace(/([A-Z])/g, '-$1').toLowerCase());
+            if (element) {
+                element.className = success ? 'success' : 'pending';
+                element.innerHTML = success ? '✅ ' + element.textContent.substring(2) : element.textContent;
+            }
+            
+            // Check if all tests passed
+            if (Object.values(tests).every(v => v)) {
+                setTimeout(() => {
+                    const info = document.getElementById('test-info');
+                    info.innerHTML += '<p style="color: #90ee90; font-weight: bold; margin-top: 15px;">✅ All tests passed!</p>';
+                }, 500);
+            }
+        }
+
+        // Create game config
+        const config = {
+            type: Phaser.AUTO,
+            scale: {
+                mode: Phaser.Scale.RESIZE,
+                width: '100%',
+                height: '100%'
+            },
+            parent: 'game',
+            physics: {
+                default: 'arcade',
+                arcade: {
+                    gravity: { y: 800 },
+                    debug: false
+                }
+            },
+            scene: [BootScene, MainMenuScene, GameScene, UIScene],
+            callbacks: {
+                postBoot: function(game) {
+                    console.log('Game booted successfully');
+                    
+                    // Test BootScene
+                    const bootScene = game.scene.getScene('BootScene');
+                    if (bootScene) {
+                        updateTest('bootScene', true);
+                        console.log('✅ BootScene initialized');
+                        
+                        // Listen for scene transitions
+                        bootScene.events.on('start', () => {
+                            console.log('BootScene started');
+                        });
+                    }
+                    
+                    // Test MainMenuScene
+                    const mainMenuScene = game.scene.getScene('MainMenuScene');
+                    if (mainMenuScene) {
+                        mainMenuScene.events.on('create', () => {
+                            updateTest('mainMenu', true);
+                            console.log('✅ MainMenuScene created');
+                        });
+                    }
+                    
+                    // Test GameScene
+                    const gameScene = game.scene.getScene('GameScene');
+                    if (gameScene) {
+                        gameScene.events.on('create', () => {
+                            // Check if managers are initialized
+                            if (gameScene.assetManager && gameScene.worldManager && gameScene.inputController) {
+                                updateTest('gameScene', true);
+                                console.log('✅ GameScene with all managers initialized');
+                            }
+                        });
+                        
+                        // Test event system
+                        gameScene.events.on('game-started', () => {
+                            updateTest('eventSystem', true);
+                            console.log('✅ Event system working (game-started event received)');
+                        });
+                    }
+                    
+                    // Test UIScene
+                    const uiScene = game.scene.getScene('UIScene');
+                    if (uiScene) {
+                        uiScene.events.on('create', () => {
+                            // Check if UIManager is initialized
+                            if (uiScene.uiManager) {
+                                updateTest('uiScene', true);
+                                console.log('✅ UIScene with UIManager initialized');
+                            }
+                        });
+                    }
+                }
+            }
+        };
+
+        // Start the game
+        const game = new Phaser.Game(config);
+        
+        // Log game instance
+        console.log('Game instance created:', game);
+        
+        // Add global access for debugging
+        window.game = game;
+    </script>
+</body>
+</html>

@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HUD Test - AI Sandbox Builder</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #1a1a1a;
+            font-family: 'Courier New', monospace;
+            color: white;
+        }
+        #test-container {
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            background: #2a2a2a;
+            border: 1px solid #4a4a4a;
+            border-radius: 8px;
+        }
+        .test-button {
+            padding: 10px 20px;
+            margin: 5px;
+            background: #4a4a4a;
+            border: 2px solid #5a5a5a;
+            border-radius: 4px;
+            color: white;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+        }
+        .test-button:hover {
+            background: #5a5a5a;
+        }
+        h2 {
+            color: #87ceeb;
+        }
+    </style>
+</head>
+<body>
+    <div id="test-container">
+        <h1>🧪 HUD Elements Test</h1>
+        
+        <div class="test-section">
+            <h2>Credits Display Test</h2>
+            <p>Test updating credits and generations in the toolbar</p>
+            <button class="test-button" onclick="testCredits(100, 50)">Set Credits: 100, Gens: 50</button>
+            <button class="test-button" onclick="testCredits(500, 200)">Set Credits: 500, Gens: 200</button>
+            <button class="test-button" onclick="testCredits(0, 0)">Set Credits: 0, Gens: 0</button>
+        </div>
+
+        <div class="test-section">
+            <h2>Asset Count Display Test</h2>
+            <p>Test updating asset count with color coding and warnings</p>
+            <button class="test-button" onclick="testAssetCount(50)">Set Count: 50 (Normal)</button>
+            <button class="test-button" onclick="testAssetCount(350)">Set Count: 350 (Normal)</button>
+            <button class="test-button" onclick="testAssetCount(420)">Set Count: 420 (Warning)</button>
+            <button class="test-button" onclick="testAssetCount(500)">Set Count: 500 (Limit)</button>
+        </div>
+
+        <div class="test-section">
+            <h2>Tooltip Test</h2>
+            <p>Hover over buttons to test tooltips</p>
+            <button class="test-button" onmouseenter="testTooltip('This is a test tooltip!', event)" onmouseleave="hideTooltip()">Hover for Tooltip 1</button>
+            <button class="test-button" onmouseenter="testTooltip('Another tooltip with more text', event)" onmouseleave="hideTooltip()">Hover for Tooltip 2</button>
+            <button class="test-button" onmouseenter="testTooltip('🎨 Tooltips support emojis!', event)" onmouseleave="hideTooltip()">Hover for Tooltip 3</button>
+        </div>
+
+        <div class="test-section">
+            <h2>HUD Position Test</h2>
+            <p>Verify HUD elements are positioned correctly:</p>
+            <ul>
+                <li>✅ Credits display: Top toolbar (right side)</li>
+                <li>✅ Asset count display: Bottom right corner</li>
+                <li>✅ Tooltips: Follow mouse position</li>
+                <li>✅ No blocking of gameplay area</li>
+            </ul>
+        </div>
+    </div>
+
+    <script type="module">
+        import UIManager from './src/managers/UIManager.js';
+
+        // Create a mock Phaser scene
+        const mockScene = {
+            events: {
+                emit: (event, ...args) => console.log('Event emitted:', event, args),
+                on: () => {}
+            }
+        };
+
+        // Initialize UIManager
+        window.uiManager = new UIManager(mockScene);
+        
+        // Create toolbar to test credits display
+        window.uiManager.createMainToolbar();
+
+        // Test functions
+        window.testCredits = (credits, generations) => {
+            console.log(`Testing credits: ${credits}, generations: ${generations}`);
+            window.uiManager.updateCreditsDisplay(credits, generations);
+        };
+
+        window.testAssetCount = (count) => {
+            console.log(`Testing asset count: ${count}`);
+            window.uiManager.updateAssetCountDisplay(count);
+        };
+
+        window.testTooltip = (text, event) => {
+            const x = event.clientX + 10;
+            const y = event.clientY + 10;
+            console.log(`Testing tooltip: "${text}" at (${x}, ${y})`);
+            window.uiManager.showTooltip(text, x, y);
+        };
+
+        window.hideTooltip = () => {
+            console.log('Hiding tooltip');
+            window.uiManager.hideTooltip();
+        };
+
+        // Initial values
+        window.uiManager.updateCreditsDisplay(100, 25);
+        window.uiManager.updateAssetCountDisplay(0);
+
+        console.log('✅ HUD Test initialized successfully!');
+        console.log('UIManager instance:', window.uiManager);
+    </script>
+</body>
+</html>

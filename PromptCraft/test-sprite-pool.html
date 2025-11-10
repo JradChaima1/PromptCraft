@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sprite Pool Test</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: 'Courier New', monospace;
+      background: #1a1a2e;
+      color: #eee;
+    }
+    #game-container {
+      border: 2px solid #16213e;
+      margin: 20px auto;
+      display: block;
+    }
+    .controls {
+      max-width: 800px;
+      margin: 20px auto;
+      padding: 20px;
+      background: #16213e;
+      border-radius: 8px;
+    }
+    button {
+      background: #0f3460;
+      color: #eee;
+      border: 2px solid #16213e;
+      padding: 10px 20px;
+      margin: 5px;
+      cursor: pointer;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      border-radius: 4px;
+    }
+    button:hover {
+      background: #16213e;
+    }
+    .stats {
+      margin-top: 20px;
+      padding: 15px;
+      background: #0f3460;
+      border-radius: 4px;
+      font-size: 14px;
+      line-height: 1.8;
+    }
+    .stat-label {
+      color: #e94560;
+      font-weight: bold;
+    }
+    h1 {
+      text-align: center;
+      color: #e94560;
+    }
+    .info {
+      text-align: center;
+      margin-bottom: 20px;
+      color: #aaa;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎮 Sprite Pool Test</h1>
+  <div class="info">Testing sprite pooling performance optimization</div>
+  
+  <div class="controls">
+    <div>
+      <button id="add-sprites">Add 10 Sprites</button>
+      <button id="remove-sprites">Remove 10 Sprites</button>
+      <button id="clear-all">Clear All</button>
+      <button id="stress-test">Stress Test (100 add/remove cycles)</button>
+    </div>
+    
+    <div class="stats" id="stats">
+      <div><span class="stat-label">Active Sprites:</span> <span id="active-count">0</span></div>
+      <div><span class="stat-label">Pooled Sprites:</span> <span id="pooled-count">0</span></div>
+      <div><span class="stat-label">Total Pools:</span> <span id="pool-count">0</span></div>
+      <div><span class="stat-label">Sprites Created:</span> <span id="created-count">0</span></div>
+      <div><span class="stat-label">Sprites Reused:</span> <span id="reused-count">0</span></div>
+      <div><span class="stat-label">Pool Efficiency:</span> <span id="efficiency">0%</span></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import Phaser from './node_modules/phaser/dist/phaser.esm.js';
+    import SpritePool from './src/managers/SpritePool.js';
+
+    // Track statistics
+    let spritesCreated = 0;
+    let spritesReused = 0;
+    let placedSprites = [];
+
+    class TestScene extends Phaser.Scene {
+      constructor() {
+        super({ key: 'TestScene' });
+      }
+
+      preload() {
+        // Create test textures
+        this.createTestTextures();
+      }
+
+      create() {
+        // Initialize sprite pool
+        this.spritePool = new SpritePool(this);
+
+        // Add background
+        this.add.rectangle(400, 300, 800, 600, 0x0f3460);
+        this.add.text(400, 50, 'Sprite Pool Test Area', {
+          fontSize: '24px',
+          color: '#e94560',
+          fontFamily: 'Courier New'
+        }).setOrigin(0.5);
+
+        // Instructions
+        this.add.text(400, 550, 'Click buttons above to test sprite pooling', {
+          fontSize: '14px',
+          color: '#aaa',
+          fontFamily: 'Courier New'
+        }).setOrigin(0.5);
+
+        // Intercept console.log to track pool usage
+        const originalLog = console.log;
+        console.log = (...args) => {
+          const message = args.join(' ');
+          if (message.includes('New sprite created')) {
+            spritesCreated++;
+          } else if (message.includes('Sprite reused from pool')) {
+            spritesReused++;
+          }
+          originalLog.apply(console, args);
+        };
+
+        // Update stats display
+        this.updateStats();
+
+        // Set up button handlers
+        this.setupButtons();
+      }
+
+      createTestTextures() {
+        // Create simple colored squares for testing
+        const colors = [0xff6b6b, 0x4ecdc4, 0xffe66d, 0x95e1d3, 0xf38181];
+        const names = ['red', 'cyan', 'yellow', 'green', 'pink'];
+
+        colors.forEach((color, index) => {
+          const graphics = this.add.graphics();
+          graphics.fillStyle(color, 1);
+          graphics.fillRect(0, 0, 32, 32);
+          graphics.generateTexture(names[index], 32, 32);
+          graphics.destroy();
+        });
+      }
+
+      setupButtons() {
+        document.getElementById('add-sprites').onclick = () => this.addSprites(10);
+        document.getElementById('remove-sprites').onclick = () => this.removeSprites(10);
+        document.getElementById('clear-all').onclick = () => this.clearAll();
+        document.getElementById('stress-test').onclick = () => this.stressTest();
+      }
+
+      addSprites(count) {
+        const textures = ['red', 'cyan', 'yellow', 'green', 'pink'];
+        
+        for (let i = 0; i < count; i++) {
+          const textureKey = Phaser.Math.RND.pick(textures);
+          const x = Phaser.Math.Between(100, 700);
+          const y = Phaser.Math.Between(100, 500);
+          
+          const sprite = this.spritePool.getFromPool(textureKey, x, y);
+          placedSprites.push({ sprite, textureKey });
+        }
+
+        this.updateStats();
+      }
+
+      removeSprites(count) {
+        const toRemove = Math.min(count, placedSprites.length);
+        
+        for (let i = 0; i < toRemove; i++) {
+          const { sprite, textureKey } = placedSprites.pop();
+          this.spritePool.returnToPool(sprite, textureKey);
+        }
+
+        this.updateStats();
+      }
+
+      clearAll() {
+        while (placedSprites.length > 0) {
+          const { sprite, textureKey } = placedSprites.pop();
+          this.spritePool.returnToPool(sprite, textureKey);
+        }
+
+        this.updateStats();
+      }
+
+      async stressTest() {
+        const button = document.getElementById('stress-test');
+        button.disabled = true;
+        button.textContent = 'Running stress test...';
+
+        const startCreated = spritesCreated;
+        const startReused = spritesReused;
+
+        for (let i = 0; i < 100; i++) {
+          this.addSprites(10);
+          await new Promise(resolve => setTimeout(resolve, 10));
+          this.removeSprites(10);
+          await new Promise(resolve => setTimeout(resolve, 10));
+        }
+
+        const newCreated = spritesCreated - startCreated;
+        const newReused = spritesReused - startReused;
+
+        button.disabled = false;
+        button.textContent = 'Stress Test (100 add/remove cycles)';
+
+        alert(`Stress Test Complete!\n\nNew sprites created: ${newCreated}\nSprites reused: ${newReused}\n\nPool is working efficiently!`);
+      }
+
+      updateStats() {
+        const stats = this.spritePool.getStats();
+        
+        document.getElementById('active-count').textContent = stats.activeSprites;
+        document.getElementById('pooled-count').textContent = stats.totalPooledSprites;
+        document.getElementById('pool-count').textContent = stats.totalPools;
+        document.getElementById('created-count').textContent = spritesCreated;
+        document.getElementById('reused-count').textContent = spritesReused;
+        
+        const total = spritesCreated + spritesReused;
+        const efficiency = total > 0 ? Math.round((spritesReused / total) * 100) : 0;
+        document.getElementById('efficiency').textContent = efficiency + '%';
+      }
+    }
+
+    const config = {
+      type: Phaser.AUTO,
+      width: 800,
+      height: 600,
+      parent: 'game-container',
+      backgroundColor: '#0f3460',
+      physics: {
+        default: 'arcade',
+        arcade: {
+          gravity: { y: 0 },
+          debug: false
+        }
+      },
+      scene: TestScene
+    };
+
+    const game = new Phaser.Game(config);
+  </script>
+</body>
+</html>

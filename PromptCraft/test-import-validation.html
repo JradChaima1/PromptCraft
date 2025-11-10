@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Import Validation Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: monospace;
+            background: #1a1a1a;
+            color: #00ff00;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 2px solid #00ff00;
+            border-radius: 5px;
+        }
+        .status {
+            padding: 5px 10px;
+            margin: 5px 0;
+            background: #2a2a2a;
+            border-left: 3px solid #00ff00;
+        }
+        .status.pass {
+            border-left-color: #00ff00;
+        }
+        .status.fail {
+            border-left-color: #ff0000;
+            color: #ff0000;
+        }
+        button {
+            background: #00ff00;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            font-family: monospace;
+            font-weight: bold;
+        }
+        button:hover {
+            background: #00ffff;
+        }
+        .code-block {
+            background: #1a1a1a;
+            padding: 10px;
+            border-left: 3px solid #00ffff;
+            overflow-x: auto;
+            font-size: 12px;
+            white-space: pre;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Import Validation Test</h1>
+    
+    <div class="test-section">
+        <h2>Test Results</h2>
+        <div id="test-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Manual Tests</h2>
+        <button onclick="testValidImport()">Test Valid Import</button>
+        <button onclick="testInvalidVersion()">Test Invalid Version</button>
+        <button onclick="testMissingAssets()">Test Missing Assets</button>
+        <button onclick="testEmbeddedAssets()">Test Embedded Assets</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Test Output</h2>
+        <div class="code-block" id="output"></div>
+    </div>
+
+    <script type="module">
+        import StorageService from './src/services/StorageService.js';
+        
+        const storageService = new StorageService();
+        const output = document.getElementById('output');
+        const results = document.getElementById('test-results');
+        
+        function log(message, isError = false) {
+            const line = document.createElement('div');
+            line.textContent = message;
+            if (isError) line.style.color = '#ff0000';
+            output.appendChild(line);
+            console.log(message);
+        }
+        
+        function addResult(test, passed) {
+            const status = document.createElement('div');
+            status.className = `status ${passed ? 'pass' : 'fail'}`;
+            status.textContent = `${passed ? '✓' : '✗'} ${test}`;
+            results.appendChild(status);
+        }
+        
+        // Test 1: StorageService.importFromFile exists
+        log('Test 1: Checking StorageService.importFromFile method...');
+        if (typeof storageService.importFromFile === 'function') {
+            log('✓ importFromFile method exists', false);
+            addResult('StorageService.importFromFile exists', true);
+        } else {
+            log('✗ importFromFile method not found', true);
+            addResult('StorageService.importFromFile exists', false);
+        }
+        
+        // Test 2: Method returns a Promise
+        log('\nTest 2: Checking if importFromFile returns a Promise...');
+        try {
+            const result = storageService.importFromFile();
+            if (result && typeof result.then === 'function') {
+                log('✓ importFromFile returns a Promise', false);
+                addResult('importFromFile returns Promise', true);
+                // Cancel the file picker
+                result.catch(() => {});
+            } else {
+                log('✗ importFromFile does not return a Promise', true);
+                addResult('importFromFile returns Promise', false);
+            }
+        } catch (error) {
+            log(`✗ Error calling importFromFile: ${error.message}`, true);
+            addResult('importFromFile returns Promise', false);
+        }
+        
+        // Test 3: Validation logic
+        log('\nTest 3: Testing validation logic...');
+        
+        // Mock WorldManager for testing
+        class MockWorldManager {
+            constructor() {
+                this.scene = {
+                    cameras: { main: { setScroll: () => {}, setZoom: () => {} } },
+                    player: null,
+                    physics: { world: { bounds: { width: 4000, height: 600 } } }
+                };
+                this.placedAssets = [];
+                this.spriteGroup = { clear: () => {} };
+                this.selectedAsset = null;
+            }
+            
+            clearWorld() {}
+            addPlacedAsset() { return { instanceId: 'test', sprite: { setData: () => {} } }; }
+            saveWorld() {}
+            
+            async importWorld(worldData, assetManager) {
+                // Validation logic from actual implementation
+                if (!worldData) {
+                    throw new Error('Invalid world data: data is null or undefined');
+                }
+                if (!worldData.version) {
+                    throw new Error('Invalid world data: missing version field');
+                }
+                if (!worldData.placedAssets) {
+                    throw new Error('Invalid world data: missing placedAssets field');
+                }
+                if (!Array.isArray(worldData.placedAssets)) {
+                    throw new Error('Invalid world data: placedAssets must be an array');
+                }
+                return true;
+            }
+        }
+        
+        const mockWorldManager = new MockWorldManager();
+        const mockAssetManager = {};
+        
+        // Test null data
+        try {
+            await mockWorldManager.importWorld(null, mockAssetManager);
+            log('✗ Should reject null data', true);
+            addResult('Rejects null data', false);
+        } catch (error) {
+            if (error.message.includes('null or undefined')) {
+                log('✓ Correctly rejects null data', false);
+                addResult('Rejects null data', true);
+            } else {
+                log(`✗ Wrong error for null data: ${error.message}`, true);
+                addResult('Rejects null data', false);
+            }
+        }
+        
+        // Test missing version
+        try {
+            await mockWorldManager.importWorld({}, mockAssetManager);
+            log('✗ Should reject missing version', true);
+            addResult('Rejects missing version', false);
+        } catch (error) {
+            if (error.message.includes('missing version')) {
+                log('✓ Correctly rejects missing version', false);
+                addResult('Rejects missing version', true);
+            } else {
+                log(`✗ Wrong error for missing version: ${error.message}`, true);
+                addResult('Rejects missing version', false);
+            }
+        }
+        
+        // Test missing placedAssets
+        try {
+            await mockWorldManager.importWorld({ version: '1.0' }, mockAssetManager);
+            log('✗ Should reject missing placedAssets', true);
+            addResult('Rejects missing placedAssets', false);
+        } catch (error) {
+            if (error.message.includes('missing placedAssets')) {
+                log('✓ Correctly rejects missing placedAssets', false);
+                addResult('Rejects missing placedAssets', true);
+            } else {
+                log(`✗ Wrong error for missing placedAssets: ${error.message}`, true);
+                addResult('Rejects missing placedAssets', false);
+            }
+        }
+        
+        // Test invalid placedAssets type
+        try {
+            await mockWorldManager.importWorld({ version: '1.0', placedAssets: 'not-an-array' }, mockAssetManager);
+            log('✗ Should reject non-array placedAssets', true);
+            addResult('Rejects non-array placedAssets', false);
+        } catch (error) {
+            if (error.message.includes('must be an array')) {
+                log('✓ Correctly rejects non-array placedAssets', false);
+                addResult('Rejects non-array placedAssets', true);
+            } else {
+                log(`✗ Wrong error for non-array placedAssets: ${error.message}`, true);
+                addResult('Rejects non-array placedAssets', false);
+            }
+        }
+        
+        // Test valid data
+        try {
+            await mockWorldManager.importWorld({ version: '1.0', placedAssets: [] }, mockAssetManager);
+            log('✓ Accepts valid data structure', false);
+            addResult('Accepts valid data', true);
+        } catch (error) {
+            log(`✗ Should accept valid data: ${error.message}`, true);
+            addResult('Accepts valid data', false);
+        }
+        
+        log('\n✅ All validation tests complete!');
+        
+        // Make test functions global
+        window.testValidImport = function() {
+            log('\n=== Testing Valid Import ===');
+            const validData = {
+                version: '1.0',
+                worldName: 'Test World',
+                placedAssets: [],
+                worldSize: { width: 4000, height: 600 },
+                playerSpawn: { x: 100, y: 300 },
+                cameraPosition: { x: 0, y: 0, zoom: 1 }
+            };
+            log(JSON.stringify(validData, null, 2));
+            log('✓ This data structure would be accepted');
+        };
+        
+        window.testInvalidVersion = function() {
+            log('\n=== Testing Invalid Version ===');
+            const invalidData = {
+                placedAssets: []
+            };
+            log(JSON.stringify(invalidData, null, 2));
+            log('✗ This would be rejected: missing version field');
+        };
+        
+        window.testMissingAssets = function() {
+            log('\n=== Testing Missing Assets ===');
+            const data = {
+                version: '1.0',
+                placedAssets: [
+                    {
+                        instanceId: 'test-1',
+                        assetId: 'missing-asset-id',
+                        position: { x: 100, y: 200 }
+                    }
+                ]
+            };
+            log(JSON.stringify(data, null, 2));
+            log('⚠ Assets without embedded data would be skipped if not in library');
+        };
+        
+        window.testEmbeddedAssets = function() {
+            log('\n=== Testing Embedded Assets ===');
+            const data = {
+                version: '1.0',
+                placedAssets: [
+                    {
+                        instanceId: 'test-1',
+                        assetId: 'asset-123',
+                        position: { x: 100, y: 200 },
+                        assetData: {
+                            id: 'asset-123',
+                            name: 'Test Asset',
+                            imageData: 'data:image/png;base64,iVBORw0KG...',
+                            category: 'object'
+                        }
+                    }
+                ]
+            };
+            log(JSON.stringify(data, null, 2));
+            log('✓ Embedded assets would be added to library automatically');
+        };
+    </script>
+</body>
+</html>

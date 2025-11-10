@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Animation Playback Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: 'Courier New', monospace;
+            background: #1a1a1a;
+            color: #ffffff;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #87ceeb;
+            border-bottom: 2px solid #87ceeb;
+            padding-bottom: 10px;
+        }
+        .test-section {
+            background: #2a2a2a;
+            border: 2px solid #4a4a4a;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .test-section h2 {
+            color: #90ee90;
+            margin-top: 0;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .status.pass {
+            background: #2d5016;
+            border: 1px solid #4a7c2d;
+            color: #90ee90;
+        }
+        .status.fail {
+            background: #501616;
+            border: 1px solid #7c2d2d;
+            color: #ff6b6b;
+        }
+        .status.info {
+            background: #16344a;
+            border: 1px solid #2d5a7c;
+            color: #87ceeb;
+        }
+        button {
+            background: #4a7c59;
+            border: 2px solid #5a8c69;
+            border-radius: 4px;
+            color: #ffffff;
+            padding: 10px 20px;
+            font-size: 14px;
+            cursor: pointer;
+            margin: 5px;
+            font-family: 'Courier New', monospace;
+        }
+        button:hover {
+            background: #5a8c69;
+        }
+        button:disabled {
+            background: #3a3a3a;
+            border-color: #4a4a4a;
+            color: #888;
+            cursor: not-allowed;
+        }
+        .code {
+            background: #1a1a1a;
+            border: 1px solid #4a4a4a;
+            border-radius: 4px;
+            padding: 10px;
+            margin: 10px 0;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+        #game-container {
+            border: 2px solid #87ceeb;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎬 Animation Playback Test</h1>
+        <p>Testing Task 7.2: Implement animation playback</p>
+
+        <div class="test-section">
+            <h2>Test 1: Animation Creation from Frames</h2>
+            <p>Tests if createAnimationFromFrames creates a Phaser animation with correct configuration</p>
+            <button id="test1-btn">Run Test 1</button>
+            <div id="test1-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>Test 2: Animation Playback on Sprite</h2>
+            <p>Tests if animations play correctly on sprites with looping</p>
+            <button id="test2-btn">Run Test 2</button>
+            <div id="test2-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>Test 3: Animation Config Storage</h2>
+            <p>Tests if animation configuration is stored in placed asset data</p>
+            <button id="test3-btn">Run Test 3</button>
+            <div id="test3-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>Test 4: Frame Rate Configuration</h2>
+            <p>Tests if custom frame rates (1-30 FPS) are applied correctly</p>
+            <button id="test4-btn">Run Test 4</button>
+            <div id="test4-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>Test 5: Animation in Placement Preview</h2>
+            <p>Tests if animations play in placement mode preview</p>
+            <button id="test5-btn">Run Test 5</button>
+            <div id="test5-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>Visual Test: Animated Asset</h2>
+            <p>Visual verification of animation playback</p>
+            <div id="game-container"></div>
+            <button id="visual-test-btn">Start Visual Test</button>
+            <div id="visual-result"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import Phaser from './node_modules/phaser/dist/phaser.esm.js';
+        import AssetManager from './src/managers/AssetManager.js';
+        import WorldManager from './src/managers/WorldManager.js';
+        import StorageService from './src/services/StorageService.js';
+
+        // Mock API Service
+        class MockAPIService {
+            constructor() {
+                this.apiToken = 'test-token';
+            }
+
+            convertToTextureURL(base64Data) {
+                return base64Data;
+            }
+        }
+
+        // Test scene
+        class TestScene extends Phaser.Scene {
+            constructor() {
+                super({ key: 'TestScene' });
+            }
+
+            preload() {
+                // Create test frame images (colored squares)
+                const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00'];
+                colors.forEach((color, index) => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 64;
+                    canvas.height = 64;
+                    const ctx = canvas.getContext('2d');
+                    ctx.fillStyle = color;
+                    ctx.fillRect(0, 0, 64, 64);
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = '32px Arial';
+                    ctx.fillText(index + 1, 24, 42);
+                    this.textures.addBase64(`frame${index}`, canvas.toDataURL());
+                });
+            }
+
+            create() {
+                // Initialize managers
+                this.storageService = new StorageService();
+                this.apiService = new MockAPIService();
+                this.assetManager = new AssetManager(this, this.apiService, this.storageService);
+                this.worldManager = new WorldManager(this, this.storageService);
+
+                // Set up world
+                this.physics.world.setBounds(0, 0, 800, 600);
+                this.cameras.main.setBounds(0, 0, 800, 600);
+
+                window.testScene = this;
+                console.log('Test scene ready');
+            }
+        }
+
+        // Initialize Phaser game
+        const config = {
+            type: Phaser.AUTO,
+            width: 800,
+            height: 600,
+            parent: 'game-container',
+            physics: {
+                default: 'arcade',
+                arcade: {
+                    gravity: { y: 0 },
+                    debug: false
+                }
+            },
+            scene: TestScene
+        };
+
+        const game = new Phaser.Game(config);
+
+        // Helper function to display results
+        function showResult(elementId, passed, message, details = '') {
+            const resultDiv = document.getElementById(elementId);
+            const statusClass = passed ? 'pass' : 'fail';
+            const icon = passed ? '✓' : '✗';
+            resultDiv.innerHTML = `
+                <div class="status ${statusClass}">
+                    ${icon} ${message}
+                </div>
+                ${details ? `<div class="code">${details}</div>` : ''}
+            `;
+        }
+
+        function showInfo(elementId, message) {
+            const resultDiv = document.getElementById(elementId);
+            resultDiv.innerHTML = `<div class="status info">ℹ ${message}</div>`;
+        }
+
+        // Test 1: Animation Creation from Frames
+        document.getElementById('test1-btn').addEventListener('click', async () => {
+            showInfo('test1-result', 'Running test...');
+            
+            try {
+                const scene = window.testScene;
+                const frames = ['frame0', 'frame1', 'frame2', 'frame3'];
+                const animKey = 'test-anim-1';
+                
+                // Create animation
+                await scene.assetManager.createAnimationFromFrames(
+                    frames,
+                    animKey,
+                    { frameRate: 8, repeat: -1, yoyo: false }
+                );
+
+                // Check if animation exists
+                const animExists = scene.anims.exists(animKey);
+                const anim = scene.anims.get(animKey);
+                
+                if (!animExists) {
+                    showResult('test1-result', false, 'Animation was not created');
+                    return;
+                }
+
+                // Verify animation properties
+                const correctFrameRate = anim.frameRate === 8;
+                const correctRepeat = anim.repeat === -1;
+                const correctFrameCount = anim.frames.length === 4;
+
+                const allCorrect = correctFrameRate && correctRepeat && correctFrameCount;
+
+                showResult(
+                    'test1-result',
+                    allCorrect,
+                    allCorrect ? 'Animation created successfully' : 'Animation properties incorrect',
+                    `Frame Rate: ${anim.frameRate} (expected 8)\nRepeat: ${anim.repeat} (expected -1)\nFrames: ${anim.frames.length} (expected 4)`
+                );
+            } catch (error) {
+                showResult('test1-result', false, 'Test failed with error', error.message);
+            }
+        });
+
+        // Test 2: Animation Playback on Sprite
+        document.getElementById('test2-btn').addEventListener('click', async () => {
+            showInfo('test2-result', 'Running test...');
+            
+            try {
+                const scene = window.testScene;
+                const frames = ['frame0', 'frame1', 'frame2', 'frame3'];
+                const animKey = 'test-anim-2';
+                
+                // Create animation
+                await scene.assetManager.createAnimationFromFrames(
+                    frames,
+                    animKey,
+                    { frameRate: 10, repeat: -1 }
+                );
+
+                // Create sprite and play animation
+                const sprite = scene.add.sprite(100, 100, 'frame0');
+                sprite.play(animKey);
+
+                // Check if animation is playing
+                const isPlaying = sprite.anims.isPlaying;
+                const currentAnim = sprite.anims.currentAnim;
+                const isLooping = currentAnim && currentAnim.repeat === -1;
+
+                const passed = isPlaying && isLooping;
+
+                showResult(
+                    'test2-result',
+                    passed,
+                    passed ? 'Animation plays and loops correctly' : 'Animation playback issue',
+                    `Is Playing: ${isPlaying}\nIs Looping: ${isLooping}\nCurrent Frame: ${sprite.anims.currentFrame ? sprite.anims.currentFrame.index : 'N/A'}`
+                );
+
+                // Clean up
+                sprite.destroy();
+            } catch (error) {
+                showResult('test2-result', false, 'Test failed with error', error.message);
+            }
+        });
+
+        // Test 3: Animation Config Storage
+        document.getElementById('test3-btn').addEventListener('click', async () => {
+            showInfo('test3-result', 'Running test...');
+            
+            try {
+                const scene = window.testScene;
+                
+                // Create a mock animated asset
+                const asset = {
+                    id: 'test-asset-3',
+                    name: 'Test Animated Asset',
+                    description: 'Test',
+                    category: 'character',
+                    imageData: 'frame0',
+                    frames: ['frame0', 'frame1', 'frame2'],
+                    animationConfig: {
+                        frameRate: 12,
+                        repeat: -1,
+                        yoyo: false
+                    },
+                    generationParams: {},
+                    createdAt: new Date().toISOString(),
+                    usageCredits: 0
+                };
+
+                // Add asset to manager
+                scene.assetManager.addAsset(asset);
+
+                // Retrieve asset
+                const retrievedAsset = scene.assetManager.getAsset('test-asset-3');
+
+                // Check if animation config is stored
+                const hasAnimConfig = retrievedAsset && retrievedAsset.animationConfig !== null;
+                const correctFrameRate = hasAnimConfig && retrievedAsset.animationConfig.frameRate === 12;
+                const correctRepeat = hasAnimConfig && retrievedAsset.animationConfig.repeat === -1;
+
+                const passed = hasAnimConfig && correctFrameRate && correctRepeat;
+
+                showResult(
+                    'test3-result',
+                    passed,
+                    passed ? 'Animation config stored correctly' : 'Animation config storage issue',
+                    `Has Config: ${hasAnimConfig}\nFrame Rate: ${retrievedAsset?.animationConfig?.frameRate}\nRepeat: ${retrievedAsset?.animationConfig?.repeat}`
+                );
+
+                // Clean up
+                scene.assetManager.removeAsset('test-asset-3');
+            } catch (error) {
+                showResult('test3-result', false, 'Test failed with error', error.message);
+            }
+        });
+
+        // Test 4: Frame Rate Configuration
+        document.getElementById('test4-btn').addEventListener('click', async () => {
+            showInfo('test4-result', 'Running test...');
+            
+            try {
+                const scene = window.testScene;
+                const frames = ['frame0', 'frame1', 'frame2'];
+                const testRates = [1, 8, 15, 30];
+                const results = [];
+
+                for (const rate of testRates) {
+                    const animKey = `test-anim-rate-${rate}`;
+                    await scene.assetManager.createAnimationFromFrames(
+                        frames,
+                        animKey,
+                        { frameRate: rate, repeat: -1 }
+                    );
+
+                    const anim = scene.anims.get(animKey);
+                    const correct = anim.frameRate === rate;
+                    results.push({ rate, actual: anim.frameRate, correct });
+                }
+
+                const allCorrect = results.every(r => r.correct);
+
+                showResult(
+                    'test4-result',
+                    allCorrect,
+                    allCorrect ? 'All frame rates configured correctly' : 'Frame rate configuration issue',
+                    results.map(r => `${r.rate} FPS: ${r.actual} (${r.correct ? 'PASS' : 'FAIL'})`).join('\n')
+                );
+            } catch (error) {
+                showResult('test4-result', false, 'Test failed with error', error.message);
+            }
+        });
+
+        // Test 5: Animation in Placement Preview
+        document.getElementById('test5-btn').addEventListener('click', async () => {
+            showInfo('test5-result', 'Running test...');
+            
+            try {
+                const scene = window.testScene;
+                const frames = ['frame0', 'frame1', 'frame2', 'frame3'];
+                const animKey = 'test-anim-preview';
+                
+                // Create animation
+                await scene.assetManager.createAnimationFromFrames(
+                    frames,
+                    animKey,
+                    { frameRate: 8, repeat: -1 }
+                );
+
+                // Enter placement mode with animation
+                const assetData = {
+                    assetId: 'test-preview',
+                    textureKey: 'frame0',
+                    animationKey: animKey,
+                    animationConfig: { frameRate: 8, repeat: -1 }
+                };
+
+                scene.worldManager.enterPlacementMode(assetData);
+
+                // Check if preview exists and is playing animation
+                const preview = scene.worldManager.placementPreview;
+                const previewExists = preview !== null;
+                const isPlaying = preview && preview.anims.isPlaying;
+
+                const passed = previewExists && isPlaying;
+
+                showResult(
+                    'test5-result',
+                    passed,
+                    passed ? 'Animation plays in placement preview' : 'Placement preview animation issue',
+                    `Preview Exists: ${previewExists}\nAnimation Playing: ${isPlaying}`
+                );
+
+                // Clean up
+                scene.worldManager.exitPlacementMode();
+            } catch (error) {
+                showResult('test5-result', false, 'Test failed with error', error.message);
+            }
+        });
+
+        // Visual Test
+        document.getElementById('visual-test-btn').addEventListener('click', async () => {
+            showInfo('visual-result', 'Starting visual test...');
+            
+            try {
+                const scene = window.testScene;
+                
+                // Clear any existing sprites
+                scene.children.removeAll();
+
+                // Create test frames
+                const frames = ['frame0', 'frame1', 'frame2', 'frame3'];
+                const animKey = 'visual-test-anim';
+                
+                // Create animation
+                await scene.assetManager.createAnimationFromFrames(
+                    frames,
+                    animKey,
+                    { frameRate: 4, repeat: -1 }
+                );
+
+                // Create multiple sprites with animation
+                for (let i = 0; i < 5; i++) {
+                    const x = 100 + i * 150;
+                    const y = 300;
+                    const sprite = scene.add.sprite(x, y, 'frame0');
+                    sprite.setScale(1.5);
+                    sprite.play(animKey);
+                }
+
+                // Add text
+                const text = scene.add.text(400, 50, 'Animated Sprites (4 FPS)', {
+                    fontSize: '24px',
+                    color: '#ffffff',
+                    backgroundColor: '#000000',
+                    padding: { x: 10, y: 5 }
+                });
+                text.setOrigin(0.5);
+
+                showResult(
+                    'visual-result',
+                    true,
+                    'Visual test running - You should see 5 animated sprites cycling through colored frames',
+                    'Each sprite should smoothly animate through 4 frames (red, green, blue, yellow) at 4 FPS'
+                );
+            } catch (error) {
+                showResult('visual-result', false, 'Visual test failed', error.message);
+            }
+        });
+    </script>
+</body>
+</html>

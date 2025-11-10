@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Placement Mode Test - AI Sandbox Builder</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: 'Courier New', monospace;
+      background: #1a1a2e;
+      color: #eee;
+    }
+    
+    h1 {
+      color: #00ff88;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    
+    .test-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: #16213e;
+      padding: 20px;
+      border-radius: 8px;
+      border: 2px solid #00ff88;
+    }
+    
+    .test-section {
+      margin-bottom: 30px;
+      padding: 15px;
+      background: #0f1626;
+      border-radius: 4px;
+      border-left: 4px solid #00ff88;
+    }
+    
+    .test-section h2 {
+      color: #00ff88;
+      margin-top: 0;
+      font-size: 18px;
+    }
+    
+    .test-info {
+      margin: 10px 0;
+      padding: 10px;
+      background: #1a1a2e;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    
+    .test-info strong {
+      color: #00ff88;
+    }
+    
+    .controls {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 15px;
+    }
+    
+    button {
+      padding: 10px 20px;
+      background: #00ff88;
+      color: #1a1a2e;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: 'Courier New', monospace;
+      font-weight: bold;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+    
+    button:hover {
+      background: #00cc6a;
+      transform: translateY(-2px);
+    }
+    
+    button:active {
+      transform: translateY(0);
+    }
+    
+    button:disabled {
+      background: #555;
+      cursor: not-allowed;
+      transform: none;
+    }
+    
+    .status {
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 4px;
+      font-weight: bold;
+    }
+    
+    .status.success {
+      background: #00ff8844;
+      color: #00ff88;
+      border: 1px solid #00ff88;
+    }
+    
+    .status.error {
+      background: #ff004444;
+      color: #ff6b6b;
+      border: 1px solid #ff6b6b;
+    }
+    
+    .status.info {
+      background: #4488ff44;
+      color: #4488ff;
+      border: 1px solid #4488ff;
+    }
+    
+    #game-container {
+      margin-top: 20px;
+      border: 2px solid #00ff88;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    
+    .instructions {
+      background: #0f1626;
+      padding: 15px;
+      border-radius: 4px;
+      margin-top: 15px;
+      border: 1px solid #00ff88;
+    }
+    
+    .instructions h3 {
+      color: #00ff88;
+      margin-top: 0;
+    }
+    
+    .instructions ul {
+      margin: 10px 0;
+      padding-left: 20px;
+    }
+    
+    .instructions li {
+      margin: 5px 0;
+      line-height: 1.6;
+    }
+    
+    .instructions code {
+      background: #1a1a2e;
+      padding: 2px 6px;
+      border-radius: 3px;
+      color: #00ff88;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎮 Placement Mode Input Test</h1>
+  
+  <div class="test-container">
+    <div class="test-section">
+      <h2>📋 Test Overview</h2>
+      <div class="test-info">
+        <strong>Purpose:</strong> Verify that placement mode input handling works correctly in InputController
+      </div>
+      <div class="test-info">
+        <strong>Task:</strong> 5.5 Implement placement mode input
+      </div>
+      <div class="test-info">
+        <strong>Requirements:</strong> 3.1, 3.2
+      </div>
+    </div>
+    
+    <div class="test-section">
+      <h2>🎯 Features to Test</h2>
+      <div class="test-info">
+        ✅ handlePlacementPreview - Updates preview position to follow cursor<br>
+        ✅ handlePlacementClick - Places asset at cursor position<br>
+        ✅ ESC key cancels placement mode<br>
+        ✅ Right-click cancels placement mode<br>
+        ✅ Cursor style changes during placement mode
+      </div>
+    </div>
+    
+    <div class="test-section">
+      <h2>🎮 Controls</h2>
+      <div class="controls">
+        <button id="enterPlacementBtn">Enter Placement Mode</button>
+        <button id="exitPlacementBtn">Exit Placement Mode (ESC)</button>
+        <button id="checkStatusBtn">Check Status</button>
+      </div>
+      <div id="status-display"></div>
+    </div>
+    
+    <div class="instructions">
+      <h3>📖 Test Instructions</h3>
+      <ul>
+        <li><strong>Step 1:</strong> Click "Enter Placement Mode" to start</li>
+        <li><strong>Step 2:</strong> Move your mouse over the game area - you should see a semi-transparent preview following your cursor</li>
+        <li><strong>Step 3:</strong> Notice the cursor changes to <code>crosshair</code> style</li>
+        <li><strong>Step 4:</strong> <strong>Left-click</strong> to place the asset at cursor position</li>
+        <li><strong>Step 5:</strong> Enter placement mode again and press <code>ESC</code> to cancel</li>
+        <li><strong>Step 6:</strong> Enter placement mode again and <strong>right-click</strong> to cancel</li>
+        <li><strong>Step 7:</strong> Verify cursor returns to <code>default</code> style after exiting</li>
+      </ul>
+      <div class="test-info" style="margin-top: 15px;">
+        <strong>Expected Behavior:</strong>
+        <ul>
+          <li>Preview sprite follows mouse cursor smoothly</li>
+          <li>Preview is semi-transparent (alpha 0.6)</li>
+          <li>Left-click places asset and exits placement mode</li>
+          <li>ESC key exits placement mode without placing</li>
+          <li>Right-click exits placement mode without placing</li>
+          <li>Cursor style changes to crosshair during placement</li>
+        </ul>
+      </div>
+    </div>
+    
+    <div id="game-container"></div>
+  </div>
+  
+  <script type="module">
+    import Phaser from './node_modules/phaser/dist/phaser.esm.js';
+    import InputController from './src/controllers/InputController.js';
+    import WorldManager from './src/managers/WorldManager.js';
+    import AssetManager from './src/managers/AssetManager.js';
+    import StorageService from './src/services/StorageService.js';
+    import { generateUUID } from './src/utils/helpers.js';
+    
+    // Status display helper
+    function showStatus(message, type = 'info') {
+      const statusDiv = document.getElementById('status-display');
+      statusDiv.innerHTML = `<div class="status ${type}">${message}</div>`;
+      console.log(`[${type.toUpperCase()}] ${message}`);
+    }
+    
+    // Test scene
+    class PlacementTestScene extends Phaser.Scene {
+      constructor() {
+        super({ key: 'PlacementTestScene' });
+      }
+      
+      preload() {
+        // Create a simple test texture
+        const graphics = this.add.graphics();
+        graphics.fillStyle(0x00ff88, 1);
+        graphics.fillRect(0, 0, 32, 32);
+        graphics.generateTexture('test-asset', 32, 32);
+        graphics.destroy();
+      }
+      
+      create() {
+        // Set up world bounds
+        this.physics.world.setBounds(0, 0, 2000, 600);
+        
+        // Create background
+        const bg = this.add.rectangle(0, 0, 2000, 600, 0x1a1a2e);
+        bg.setOrigin(0, 0);
+        
+        // Create ground
+        const ground = this.add.rectangle(0, 550, 2000, 50, 0x00ff88);
+        ground.setOrigin(0, 0);
+        
+        // Create player
+        this.player = this.physics.add.sprite(100, 300, 'test-asset');
+        this.player.setTint(0xff6b6b);
+        this.player.setBounce(0.2);
+        this.player.setCollideWorldBounds(true);
+        
+        // Set up camera
+        this.cameras.main.setBounds(0, 0, 2000, 600);
+        this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
+        
+        // Initialize services
+        this.storageService = new StorageService();
+        this.worldManager = new WorldManager(this, this.storageService);
+        this.assetManager = new AssetManager(this, null, this.storageService);
+        
+        // Create a test asset in the asset manager
+        const testAsset = {
+          id: 'test-asset-1',
+          name: 'Test Asset',
+          description: 'A test asset for placement',
+          category: 'object',
+          imageData: 'test-data',
+          frames: [],
+          generationParams: {},
+          createdAt: new Date().toISOString(),
+          usageCredits: 0
+        };
+        
+        // Add test asset to asset manager
+        this.assetManager.assets = [testAsset];
+        this.assetManager.textureKeys.set('test-asset-1', 'test-asset');
+        
+        // Initialize input controller
+        this.inputController = new InputController(this);
+        this.inputController.setReferences(
+          this.player,
+          this.worldManager,
+          null, // uiManager
+          this.assetManager
+        );
+        
+        // Enable camera follow
+        this.inputController.enableCameraFollow();
+        
+        // Set up player collision with placed assets
+        this.worldManager.setupPlayerCollision(this.player);
+        
+        // Add info text
+        this.add.text(10, 10, 'Placement Mode Test Scene', {
+          fontSize: '16px',
+          color: '#00ff88',
+          backgroundColor: '#1a1a2e',
+          padding: { x: 10, y: 5 }
+        }).setScrollFactor(0).setDepth(1000);
+        
+        // Add placement mode indicator
+        this.placementModeText = this.add.text(10, 40, 'Placement Mode: OFF', {
+          fontSize: '14px',
+          color: '#ff6b6b',
+          backgroundColor: '#1a1a2e',
+          padding: { x: 10, y: 5 }
+        }).setScrollFactor(0).setDepth(1000);
+        
+        // Add cursor style indicator
+        this.cursorStyleText = this.add.text(10, 70, 'Cursor: default', {
+          fontSize: '14px',
+          color: '#4488ff',
+          backgroundColor: '#1a1a2e',
+          padding: { x: 10, y: 5 }
+        }).setScrollFactor(0).setDepth(1000);
+        
+        // Add asset count
+        this.assetCountText = this.add.text(10, 100, 'Placed Assets: 0', {
+          fontSize: '14px',
+          color: '#00ff88',
+          backgroundColor: '#1a1a2e',
+          padding: { x: 10, y: 5 }
+        }).setScrollFactor(0).setDepth(1000);
+        
+        showStatus('Scene created successfully. Click "Enter Placement Mode" to start testing.', 'success');
+        
+        // Set up button handlers
+        this.setupButtonHandlers();
+      }
+      
+      setupButtonHandlers() {
+        const enterBtn = document.getElementById('enterPlacementBtn');
+        const exitBtn = document.getElementById('exitPlacementBtn');
+        const checkBtn = document.getElementById('checkStatusBtn');
+        
+        enterBtn.addEventListener('click', () => {
+          const assetData = {
+            assetId: 'test-asset-1',
+            textureKey: 'test-asset',
+            imageData: 'test-data'
+          };
+          
+          this.inputController.enterPlacementMode('test-asset-1', assetData);
+          showStatus('Entered placement mode. Move mouse to see preview, left-click to place, ESC or right-click to cancel.', 'success');
+        });
+        
+        exitBtn.addEventListener('click', () => {
+          this.inputController.exitPlacementMode();
+          showStatus('Exited placement mode manually.', 'info');
+        });
+        
+        checkBtn.addEventListener('click', () => {
+          const isPlacementMode = this.inputController.isPlacementMode;
+          const assetCount = this.worldManager.getAssetCount();
+          const cursorStyle = this.input.manager.canvas.style.cursor;
+          
+          showStatus(
+            `Placement Mode: ${isPlacementMode ? 'ON' : 'OFF'} | ` +
+            `Assets Placed: ${assetCount} | ` +
+            `Cursor Style: ${cursorStyle || 'default'}`,
+            'info'
+          );
+        });
+      }
+      
+      update() {
+        // Update input controller
+        this.inputController.update();
+        
+        // Update culling
+        this.worldManager.updateCulling();
+        
+        // Update UI indicators
+        const isPlacementMode = this.inputController.isPlacementMode;
+        this.placementModeText.setText(`Placement Mode: ${isPlacementMode ? 'ON' : 'OFF'}`);
+        this.placementModeText.setColor(isPlacementMode ? '#00ff88' : '#ff6b6b');
+        
+        const cursorStyle = this.input.manager.canvas.style.cursor || 'default';
+        this.cursorStyleText.setText(`Cursor: ${cursorStyle}`);
+        
+        const assetCount = this.worldManager.getAssetCount();
+        this.assetCountText.setText(`Placed Assets: ${assetCount}`);
+      }
+    }
+    
+    // Game configuration
+    const config = {
+      type: Phaser.AUTO,
+      width: 800,
+      height: 600,
+      parent: 'game-container',
+      backgroundColor: '#1a1a2e',
+      physics: {
+        default: 'arcade',
+        arcade: {
+          gravity: { y: 800 },
+          debug: false
+        }
+      },
+      scene: [PlacementTestScene]
+    };
+    
+    // Create game instance
+    const game = new Phaser.Game(config);
+    
+    console.log('Placement Mode Test initialized');
+  </script>
+</body>
+</html>

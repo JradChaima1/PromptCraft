@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Keyboard Shortcuts Test</title>
+  <style>
+    body {
+      font-family: 'Courier New', monospace;
+      background: #1a1a2e;
+      color: #eee;
+      padding: 20px;
+      margin: 0;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    h1 {
+      color: #16c79a;
+      border-bottom: 2px solid #16c79a;
+      padding-bottom: 10px;
+    }
+    .test-section {
+      background: #16213e;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 8px;
+      border: 1px solid #0f3460;
+    }
+    .shortcut-list {
+      list-style: none;
+      padding: 0;
+    }
+    .shortcut-item {
+      padding: 10px;
+      margin: 5px 0;
+      background: #0f3460;
+      border-radius: 4px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .key {
+      background: #16c79a;
+      color: #1a1a2e;
+      padding: 5px 10px;
+      border-radius: 4px;
+      font-weight: bold;
+      font-size: 14px;
+    }
+    .description {
+      flex: 1;
+      margin-left: 15px;
+    }
+    .status {
+      padding: 5px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+    .status.ready {
+      background: #4a5568;
+      color: #eee;
+    }
+    .status.triggered {
+      background: #16c79a;
+      color: #1a1a2e;
+      animation: pulse 0.5s;
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+    }
+    .log {
+      background: #0f3460;
+      padding: 15px;
+      border-radius: 4px;
+      max-height: 200px;
+      overflow-y: auto;
+      font-size: 12px;
+      margin-top: 20px;
+    }
+    .log-entry {
+      padding: 5px 0;
+      border-bottom: 1px solid #16213e;
+    }
+    .log-entry:last-child {
+      border-bottom: none;
+    }
+    .timestamp {
+      color: #16c79a;
+      margin-right: 10px;
+    }
+    #game-container {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎮 Keyboard Shortcuts Test</h1>
+    
+    <div class="test-section">
+      <h2>Registered Shortcuts</h2>
+      <ul class="shortcut-list" id="shortcut-list"></ul>
+    </div>
+    
+    <div class="test-section">
+      <h2>Event Log</h2>
+      <div class="log" id="event-log">
+        <div class="log-entry">
+          <span class="timestamp">[Ready]</span>
+          <span>Press any registered shortcut to test...</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div id="game-container"></div>
+  
+  <script type="module">
+    import Phaser from './node_modules/phaser/dist/phaser.esm.js';
+    import InputController from './src/controllers/InputController.js';
+    
+    // Mock managers for testing
+    class MockUIManager {
+      showGenerationModal() {
+        logEvent('UIManager.showGenerationModal() called');
+      }
+      showLibraryModal() {
+        logEvent('UIManager.showLibraryModal() called');
+      }
+      hideAllModals() {
+        logEvent('UIManager.hideAllModals() called');
+      }
+    }
+    
+    class MockWorldManager {
+      constructor() {
+        this.selectedAsset = null;
+      }
+      deselectAsset() {
+        logEvent('WorldManager.deselectAsset() called');
+        this.selectedAsset = null;
+      }
+      getSelectedAsset() {
+        return this.selectedAsset;
+      }
+      removePlacedAsset(instanceId) {
+        logEvent(`WorldManager.removePlacedAsset(${instanceId}) called`);
+      }
+      saveWorld() {
+        logEvent('WorldManager.saveWorld() called');
+      }
+      exportWorld() {
+        logEvent('WorldManager.exportWorld() called');
+      }
+    }
+    
+    // Event logging
+    function logEvent(message) {
+      const log = document.getElementById('event-log');
+      const entry = document.createElement('div');
+      entry.className = 'log-entry';
+      
+      const timestamp = new Date().toLocaleTimeString();
+      entry.innerHTML = `<span class="timestamp">[${timestamp}]</span><span>${message}</span>`;
+      
+      log.appendChild(entry);
+      log.scrollTop = log.scrollHeight;
+      
+      // Update status indicator
+      updateShortcutStatus(message);
+    }
+    
+    function updateShortcutStatus(message) {
+      const shortcuts = document.querySelectorAll('.shortcut-item');
+      shortcuts.forEach(item => {
+        const key = item.querySelector('.key').textContent;
+        const status = item.querySelector('.status');
+        
+        if (message.includes(key) || 
+            (key === 'G' && message.includes('showGenerationModal')) ||
+            (key === 'L' && message.includes('showLibraryModal')) ||
+            (key === 'ESC' && message.includes('hideAllModals')) ||
+            (key === 'Delete' && message.includes('removePlacedAsset')) ||
+            (key === 'Ctrl+S' && message.includes('saveWorld')) ||
+            (key === 'Ctrl+E' && message.includes('exportWorld'))) {
+          status.textContent = 'TRIGGERED';
+          status.className = 'status triggered';
+          setTimeout(() => {
+            status.textContent = 'Ready';
+            status.className = 'status ready';
+          }, 1000);
+        }
+      });
+    }
+    
+    // Create test scene
+    class TestScene extends Phaser.Scene {
+      constructor() {
+        super({ key: 'TestScene' });
+      }
+      
+      create() {
+        // Create InputController
+        this.inputController = new InputController(this);
+        
+        // Set up mock managers
+        const uiManager = new MockUIManager();
+        const worldManager = new MockWorldManager();
+        
+        this.inputController.setReferences(null, worldManager, uiManager, null);
+        
+        // Get shortcuts and display them
+        const shortcuts = this.inputController.getKeyboardShortcuts();
+        displayShortcuts(shortcuts);
+        
+        logEvent('InputController initialized with all shortcuts registered');
+        logEvent('Test ready - try pressing the shortcuts!');
+      }
+    }
+    
+    function displayShortcuts(shortcuts) {
+      const list = document.getElementById('shortcut-list');
+      
+      // Priority shortcuts to test
+      const testShortcuts = {
+        'G': shortcuts['G'],
+        'L': shortcuts['L'],
+        'ESC': shortcuts['ESC'],
+        'Delete': shortcuts['Delete'],
+        'Ctrl+S': shortcuts['Ctrl+S'],
+        'Ctrl+E': shortcuts['Ctrl+E']
+      };
+      
+      for (const [key, description] of Object.entries(testShortcuts)) {
+        const item = document.createElement('li');
+        item.className = 'shortcut-item';
+        item.innerHTML = `
+          <span class="key">${key}</span>
+          <span class="description">${description}</span>
+          <span class="status ready">Ready</span>
+        `;
+        list.appendChild(item);
+      }
+    }
+    
+    // Phaser game config
+    const config = {
+      type: Phaser.AUTO,
+      width: 1,
+      height: 1,
+      parent: 'game-container',
+      scene: [TestScene],
+      physics: {
+        default: 'arcade',
+        arcade: {
+          gravity: { y: 0 }
+        }
+      }
+    };
+    
+    const game = new Phaser.Game(config);
+    
+    logEvent('Phaser game initialized');
+  </script>
+</body>
+</html>
