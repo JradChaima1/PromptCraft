@@ -62,6 +62,11 @@ export default class InputController {
       L: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.L),
       Q: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.Q),
       E: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E),
+      X: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.X),
+      Y: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.Y),
+      PLUS: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.PLUS),
+      EQUALS: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.EQUALS),
+      MINUS: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.MINUS),
       CTRL: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.CTRL)
     };
     
@@ -164,6 +169,51 @@ export default class InputController {
       }
     });
     
+    // X key - flip selected asset horizontally
+    this.keys.X.on('down', () => {
+      // Don't trigger if modal is open
+      if (this.uiManager && this.uiManager.isModalOpen()) {
+        return;
+      }
+      if (this.worldManager && this.worldManager.getSelectedAsset()) {
+        this.worldManager.flipSelectedAsset('x');
+      }
+    });
+    
+    // Y key - flip selected asset vertically
+    this.keys.Y.on('down', () => {
+      // Don't trigger if modal is open
+      if (this.uiManager && this.uiManager.isModalOpen()) {
+        return;
+      }
+      if (this.worldManager && this.worldManager.getSelectedAsset()) {
+        this.worldManager.flipSelectedAsset('y');
+      }
+    });
+    
+    // + or = key - scale up selected asset
+    this.keys.PLUS.on('down', () => {
+      if (this.uiManager && this.uiManager.isModalOpen()) return;
+      if (this.worldManager && this.worldManager.getSelectedAsset()) {
+        this.worldManager.scaleSelectedAsset('up');
+      }
+    });
+    
+    this.keys.EQUALS.on('down', () => {
+      if (this.uiManager && this.uiManager.isModalOpen()) return;
+      if (this.worldManager && this.worldManager.getSelectedAsset()) {
+        this.worldManager.scaleSelectedAsset('up');
+      }
+    });
+    
+    // - key - scale down selected asset
+    this.keys.MINUS.on('down', () => {
+      if (this.uiManager && this.uiManager.isModalOpen()) return;
+      if (this.worldManager && this.worldManager.getSelectedAsset()) {
+        this.worldManager.scaleSelectedAsset('down');
+      }
+    });
+    
     // Ctrl+S - save world
     this.scene.input.keyboard.on('keydown-S', (event) => {
       if (event.ctrlKey && this.worldManager) {
@@ -187,6 +237,12 @@ export default class InputController {
    * Handle pointer down events
    */
   handlePointerDown(pointer) {
+    // Check if clicking on a transformation handle first
+    if (this.worldManager && this.worldManager.activeHandle) {
+      // Handle is being interacted with, don't process other inputs
+      return;
+    }
+    
     // Middle mouse button - start camera pan
     if (pointer.middleButtonDown()) {
       this.isPanning = true;
@@ -219,7 +275,12 @@ export default class InputController {
    * Handle pointer move events
    */
   handlePointerMove(pointer) {
-    // Camera panning
+    // Don't process if a handle is being dragged
+    if (this.worldManager && this.worldManager.activeHandle) {
+      return;
+    }
+    
+    // Camera panning (but not if handle is active)
     if (this.isPanning && pointer.middleButtonDown()) {
       this.handleCameraPan(pointer);
       return;
@@ -229,11 +290,6 @@ export default class InputController {
     if (this.isPlacementMode) {
       this.handlePlacementPreview(pointer);
       return;
-    }
-    
-    // Asset dragging
-    if (this.isDraggingAsset && pointer.leftButtonDown()) {
-      this.handleAssetDrag(pointer);
     }
   }
   
@@ -246,10 +302,7 @@ export default class InputController {
       this.isPanning = false;
     }
     
-    // Stop asset dragging
-    if (this.isDraggingAsset) {
-      this.handleAssetRelease(pointer);
-    }
+    // Note: Asset dragging is now handled by WorldManager's handle system
   }
   
   /**
@@ -437,8 +490,25 @@ export default class InputController {
       return;
     }
     
+    // Check if clicking on a transformation handle
+    if (this.worldManager.activeHandle) {
+      // Handle is being dragged, don't process asset click
+      return;
+    }
+    
     // Convert screen coordinates to world coordinates
     const worldPoint = this.scene.cameras.main.getWorldPoint(pointer.x, pointer.y);
+    
+    // Check if clicked on transformation handles first
+    if (this.worldManager.transformHandles) {
+      const handles = this.worldManager.transformHandles.list;
+      for (const handle of handles) {
+        if (handle.getBounds && handle.getBounds().contains(worldPoint.x, worldPoint.y)) {
+          // Clicked on a handle, don't process asset selection
+          return;
+        }
+      }
+    }
     
     // Check if clicked on any placed asset
     const placedAssets = this.worldManager.getAllPlacedAssets();
@@ -452,14 +522,8 @@ export default class InputController {
     }
     
     if (clickedAsset) {
-      // Select the asset
+      // Select the asset (don't start dragging here, let handles handle it)
       this.worldManager.selectAsset(clickedAsset.instanceId);
-      
-      // Start dragging
-      this.isDraggingAsset = true;
-      this.draggedAsset = clickedAsset;
-      this.dragOffsetX = worldPoint.x - clickedAsset.sprite.x;
-      this.dragOffsetY = worldPoint.y - clickedAsset.sprite.y;
     } else {
       // Deselect if clicked on empty space
       this.worldManager.deselectAsset();
@@ -469,36 +533,23 @@ export default class InputController {
   /**
    * Handle asset dragging to move selected assets
    * Requirements: 4.2
+   * Note: Asset dragging is now handled by transformation handles in WorldManager
    */
   handleAssetDrag(pointer) {
-    if (!this.isDraggingAsset || !this.draggedAsset || !this.worldManager) {
-      return;
-    }
-    
-    // Convert screen coordinates to world coordinates
-    const worldPoint = this.scene.cameras.main.getWorldPoint(pointer.x, pointer.y);
-    
-    // Update asset position
-    const newX = worldPoint.x - this.dragOffsetX;
-    const newY = worldPoint.y - this.dragOffsetY;
-    
-    this.worldManager.moveAsset(this.draggedAsset.instanceId, newX, newY);
+    // Asset dragging is now handled by the move handle in WorldManager
+    // This method is kept for backward compatibility but does nothing
+    return;
   }
   
   /**
    * Handle asset release to finalize position changes
    * Requirements: 4.2
+   * Note: Asset release is now handled by transformation handles in WorldManager
    */
   handleAssetRelease(pointer) {
-    if (this.isDraggingAsset && this.worldManager) {
-      // Save world state after moving asset
-      this.worldManager.saveWorld();
-    }
-    
-    this.isDraggingAsset = false;
-    this.draggedAsset = null;
-    this.dragOffsetX = 0;
-    this.dragOffsetY = 0;
+    // Asset release is now handled by the handle system in WorldManager
+    // This method is kept for backward compatibility but does nothing
+    return;
   }
 
   /**

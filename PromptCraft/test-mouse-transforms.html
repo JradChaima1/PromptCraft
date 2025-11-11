@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mouse Transform Controls Test</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: #1a1a1a;
+      font-family: 'Courier New', monospace;
+      color: #fff;
+      overflow: hidden;
+    }
+    
+    #test-info {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      background: rgba(0, 0, 0, 0.8);
+      padding: 15px;
+      border: 2px solid #87ceeb;
+      border-radius: 8px;
+      max-width: 400px;
+      z-index: 2000;
+    }
+    
+    #test-info h2 {
+      margin: 0 0 10px 0;
+      color: #87ceeb;
+      font-size: 16px;
+    }
+    
+    #test-info ul {
+      margin: 10px 0;
+      padding-left: 20px;
+      font-size: 12px;
+      line-height: 1.6;
+    }
+    
+    #test-info li {
+      margin: 5px 0;
+    }
+    
+    .test-section {
+      margin: 10px 0;
+      padding: 10px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 4px;
+    }
+    
+    .test-section h3 {
+      margin: 0 0 8px 0;
+      color: #ffd700;
+      font-size: 14px;
+    }
+    
+    .status {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 3px;
+      font-size: 11px;
+      font-weight: bold;
+    }
+    
+    .status.pass {
+      background: #00aa00;
+      color: #fff;
+    }
+    
+    .status.pending {
+      background: #ffd700;
+      color: #000;
+    }
+    
+    #game-container {
+      width: 100vw;
+      height: 100vh;
+    }
+  </style>
+</head>
+<body>
+  <div id="test-info">
+    <h2>🎮 Mouse Transform Controls Test</h2>
+    
+    <div class="test-section">
+      <h3>Test Instructions:</h3>
+      <ul>
+        <li>Click "Generate Test Asset" to create a test sprite</li>
+        <li>Click on the asset to select it</li>
+        <li>Try dragging different handles to test transformations</li>
+      </ul>
+    </div>
+    
+    <div class="test-section">
+      <h3>Handle Types:</h3>
+      <ul>
+        <li><strong>Yellow Corner Handles:</strong> Proportional scaling</li>
+        <li><strong>Yellow Edge Handles:</strong> Non-proportional scaling</li>
+        <li><strong>Purple Top Handle:</strong> Rotation</li>
+        <li><strong>Green Center Handle:</strong> Move asset</li>
+      </ul>
+    </div>
+    
+    <div class="test-section">
+      <h3>Keyboard Modifiers:</h3>
+      <ul>
+        <li><strong>Shift + Rotate:</strong> Snap to 15° increments</li>
+        <li><strong>Shift + Move:</strong> Snap to 16px grid</li>
+        <li><strong>Ctrl + Scale:</strong> Uniform scaling</li>
+      </ul>
+    </div>
+    
+    <div class="test-section">
+      <h3>Test Checklist:</h3>
+      <ul>
+        <li><span class="status pending">PENDING</span> Handles appear on selection</li>
+        <li><span class="status pending">PENDING</span> Handles change color on hover</li>
+        <li><span class="status pending">PENDING</span> Cursor changes on hover</li>
+        <li><span class="status pending">PENDING</span> Rotation handle works</li>
+        <li><span class="status pending">PENDING</span> Corner scale handles work</li>
+        <li><span class="status pending">PENDING</span> Edge scale handles work</li>
+        <li><span class="status pending">PENDING</span> Move handle works</li>
+        <li><span class="status pending">PENDING</span> Transform indicator shows</li>
+        <li><span class="status pending">PENDING</span> Shift snapping works</li>
+        <li><span class="status pending">PENDING</span> Ctrl uniform scale works</li>
+      </ul>
+    </div>
+    
+    <button id="generate-btn" style="
+      width: 100%;
+      padding: 10px;
+      background: #00aa00;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      font-size: 14px;
+      font-weight: bold;
+      cursor: pointer;
+      margin-top: 10px;
+    ">Generate Test Asset</button>
+    
+    <button id="clear-btn" style="
+      width: 100%;
+      padding: 10px;
+      background: #ff6b6b;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      font-size: 14px;
+      font-weight: bold;
+      cursor: pointer;
+      margin-top: 5px;
+    ">Clear All Assets</button>
+  </div>
+  
+  <div id="game-container"></div>
+  
+  <script type="module">
+    import Phaser from './node_modules/phaser/dist/phaser.esm.js';
+    import { GAME_CONFIG } from './src/config/gameConfig.js';
+    import StorageService from './src/services/StorageService.js';
+    import WorldManager from './src/managers/WorldManager.js';
+    import UIManager from './src/managers/UIManager.js';
+    
+    // Test scene
+    class TestScene extends Phaser.Scene {
+      constructor() {
+        super({ key: 'TestScene' });
+      }
+      
+      create() {
+        // Create simple background
+        this.add.rectangle(0, 0, 4000, 600, 0x2a2a2a).setOrigin(0, 0);
+        
+        // Add grid for reference
+        const graphics = this.add.graphics();
+        graphics.lineStyle(1, 0x444444, 0.3);
+        for (let x = 0; x < 4000; x += 16) {
+          graphics.lineBetween(x, 0, x, 600);
+        }
+        for (let y = 0; y < 600; y += 16) {
+          graphics.lineBetween(0, y, 4000, y);
+        }
+        
+        // Initialize services
+        this.storageService = new StorageService();
+        this.worldManager = new WorldManager(this, this.storageService);
+        
+        // Set up camera
+        this.cameras.main.setBounds(0, 0, 4000, 600);
+        this.cameras.main.setZoom(1);
+        this.cameras.main.scrollX = 400;
+        this.cameras.main.scrollY = 0;
+        
+        // Enable camera controls
+        this.input.on('wheel', (pointer, gameObjects, deltaX, deltaY) => {
+          const zoom = this.cameras.main.zoom;
+          const newZoom = Phaser.Math.Clamp(zoom + (deltaY > 0 ? -0.1 : 0.1), 0.5, 2);
+          this.cameras.main.setZoom(newZoom);
+        });
+        
+        // Middle mouse pan
+        this.input.on('pointerdown', (pointer) => {
+          if (pointer.middleButtonDown()) {
+            this.isPanning = true;
+            this.panStartX = pointer.x;
+            this.panStartY = pointer.y;
+            this.cameraStartX = this.cameras.main.scrollX;
+            this.cameraStartY = this.cameras.main.scrollY;
+          }
+        });
+        
+        this.input.on('pointermove', (pointer) => {
+          if (this.isPanning && pointer.middleButtonDown()) {
+            const deltaX = (pointer.x - this.panStartX);
+            const deltaY = (pointer.y - this.panStartY);
+            this.cameras.main.scrollX = this.cameraStartX - deltaX;
+            this.cameras.main.scrollY = this.cameraStartY - deltaY;
+          }
+        });
+        
+        this.input.on('pointerup', () => {
+          this.isPanning = false;
+        });
+        
+        // Handle asset selection
+        this.input.on('pointerdown', (pointer) => {
+          if (pointer.leftButtonDown() && !this.worldManager.activeHandle) {
+            const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
+            
+            // Check if clicked on transformation handles
+            if (this.worldManager.transformHandles) {
+              const handles = this.worldManager.transformHandles.list;
+              for (const handle of handles) {
+                if (handle.getBounds && handle.getBounds().contains(worldPoint.x, worldPoint.y)) {
+                  return;
+                }
+              }
+            }
+            
+            // Check if clicked on asset
+            const assets = this.worldManager.getAllPlacedAssets();
+            let clicked = null;
+            
+            for (const asset of assets) {
+              if (asset.sprite && asset.sprite.getBounds().contains(worldPoint.x, worldPoint.y)) {
+                clicked = asset;
+                break;
+              }
+            }
+            
+            if (clicked) {
+              this.worldManager.selectAsset(clicked.instanceId);
+            } else {
+              this.worldManager.deselectAsset();
+            }
+          }
+        });
+        
+        console.log('Test scene ready');
+      }
+      
+      update() {
+        // Update culling
+        if (this.worldManager) {
+          this.worldManager.updateCulling();
+        }
+      }
+      
+      generateTestAsset() {
+        // Create a simple colored rectangle as test texture
+        const graphics = this.add.graphics();
+        graphics.fillStyle(0x00ff00, 1);
+        graphics.fillRect(0, 0, 64, 64);
+        graphics.lineStyle(2, 0x000000, 1);
+        graphics.strokeRect(0, 0, 64, 64);
+        
+        // Add some visual detail
+        graphics.fillStyle(0xffff00, 1);
+        graphics.fillCircle(32, 32, 10);
+        
+        graphics.generateTexture('test-asset', 64, 64);
+        graphics.destroy();
+        
+        // Place the asset
+        const x = this.cameras.main.scrollX + 400;
+        const y = 300;
+        
+        this.worldManager.addPlacedAsset({
+          assetId: 'test-' + Date.now(),
+          textureKey: 'test-asset',
+          position: { x, y },
+          rotation: 0,
+          scale: { x: 1, y: 1 },
+          collisionEnabled: false,
+          zIndex: 0
+        });
+        
+        console.log('Test asset generated at', x, y);
+      }
+      
+      clearAssets() {
+        this.worldManager.clearWorld(true, true);
+        console.log('All assets cleared');
+      }
+    }
+    
+    // UI Scene for transform indicator
+    class UIScene extends Phaser.Scene {
+      constructor() {
+        super({ key: 'UIScene' });
+      }
+      
+      create() {
+        this.uiManager = new UIManager(this);
+        console.log('UI scene ready');
+      }
+    }
+    
+    // Game configuration
+    const config = {
+      type: Phaser.AUTO,
+      parent: 'game-container',
+      width: window.innerWidth,
+      height: window.innerHeight,
+      backgroundColor: '#1a1a1a',
+      physics: {
+        default: 'arcade',
+        arcade: {
+          gravity: { y: 0 },
+          debug: false
+        }
+      },
+      scene: [TestScene, UIScene]
+    };
+    
+    // Create game
+    const game = new Phaser.Game(config);
+    
+    // Wire up buttons
+    document.getElementById('generate-btn').addEventListener('click', () => {
+      const scene = game.scene.getScene('TestScene');
+      if (scene) {
+        scene.generateTestAsset();
+      }
+    });
+    
+    document.getElementById('clear-btn').addEventListener('click', () => {
+      const scene = game.scene.getScene('TestScene');
+      if (scene) {
+        scene.clearAssets();
+      }
+    });
+    
+    console.log('Test initialized');
+  </script>
+</body>
+</html>

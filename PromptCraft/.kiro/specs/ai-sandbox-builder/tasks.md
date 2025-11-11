@@ -700,3 +700,84 @@
   - Test export and import functionality
   - Test error recovery scenarios
   - _Requirements: All requirements_
+
+- [x] 11. Implement interactive mouse-based transform controls
+
+
+
+
+
+  - Add interactive transformation handles for intuitive asset manipulation
+  - Enable mouse-driven rotation, scaling, and movement
+  - _Requirements: 4.1, 4.2, 4.3, 4.4_
+
+- [x] 11.1 Make transformation handles interactive
+
+
+  - Add interactive property to all handle game objects
+  - Implement pointer event listeners (pointerdown, pointerup, pointermove) for each handle
+  - Add visual feedback on handle hover (color change, scale increase)
+  - Store handle type data on each handle object for identifying which operation to perform
+  - Implement cursor style changes on handle hover (resize cursors for scale handles, rotate cursor for rotation handle)
+  - _Requirements: 4.1, 4.3, 4.4_
+
+- [x] 11.2 Implement mouse-based rotation control
+
+  - Create startRotation method to capture initial angle between handle and asset center
+  - Implement updateRotation method to calculate rotation based on mouse position relative to asset center
+  - Add stopRotation method to finalize rotation and trigger save
+  - Calculate angle using Math.atan2 for accurate rotation tracking
+  - Provide visual feedback during rotation (show angle indicator or rotation arc)
+  - Support both clockwise and counter-clockwise rotation
+  - _Requirements: 4.3_
+
+- [x] 11.3 Implement mouse-based scaling control
+
+  - Create startScale method to capture initial distance from handle to asset center
+  - Implement updateScale method to calculate scale factor based on handle distance change
+  - Add stopScale method to finalize scale and trigger save
+  - Support corner handles for proportional scaling (maintains aspect ratio)
+  - Support edge handles for non-proportional scaling (width or height only)
+  - Implement minimum scale limit (0.1x) and maximum scale limit (5x)
+  - Provide visual feedback during scaling (show scale percentage or grid)
+  - _Requirements: 4.4_
+
+- [x] 11.4 Enhance asset dragging with mouse
+
+
+  - Improve existing drag functionality to work seamlessly with new handle system
+  - Add drag handle in center of asset or make entire asset draggable when not clicking handles
+  - Implement snap-to-grid option for precise placement (configurable grid size)
+  - Add visual feedback during drag (shadow or outline)
+  - Prevent dragging when clicking on transformation handles
+  - Support multi-select drag (optional enhancement for future)
+  - _Requirements: 4.1, 4.2_
+
+- [x] 11.5 Add transform mode indicators and constraints
+
+
+  - Display current transform mode (move, rotate, scale) in HUD or near asset
+  - Show real-time values during transformation (position coordinates, rotation angle, scale percentage)
+  - Add constraint modifiers (hold Shift for 15-degree rotation snapping, hold Ctrl for uniform scaling)
+  - Implement undo/redo for transformations (optional enhancement)
+  - Add transform gizmo visualization (axis lines, rotation circle, scale boxes)
+  - Ensure transforms work correctly with camera zoom and pan
+  - _Requirements: 4.1, 4.2, 4.3, 4.4_
+
+- [x] 11.6 Update InputController for handle interactions
+
+  - Add handle interaction detection to pointer event handlers
+  - Prevent camera pan when dragging handles
+  - Prevent asset selection when clicking handles
+  - Add priority system for input handling (handles > assets > world)
+  - Update cursor management for different handle types
+  - _Requirements: 4.1, 4.2, 4.3, 4.4_
+
+- [ ]* 11.7 Create test file for mouse transform controls
+  - Create test-mouse-transforms.html for isolated testing
+  - Test rotation handle with various angles
+  - Test scale handles with different directions
+  - Test drag functionality with handles present
+  - Test constraint modifiers (Shift, Ctrl)
+  - Verify transform values are saved correctly
+  - _Requirements: 4.1, 4.2, 4.3, 4.4_

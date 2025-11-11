@@ -28,6 +28,7 @@ export default class UIManager {
     
     // HUD elements
     this.assetCountDisplay = null;
+    this.transformIndicator = null;
     
     // Inject styles
     this._injectStyles();
@@ -155,6 +156,31 @@ export default class UIManager {
       Assets: <span id="asset-count-value">0</span> / 500
     `;
     this.container.appendChild(this.assetCountDisplay);
+    
+    // Transform indicator (bottom left)
+    this.transformIndicator = document.createElement('div');
+    this.transformIndicator.id = 'transform-indicator';
+    this.transformIndicator.style.cssText = `
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      padding: 10px 15px;
+      background: rgba(26, 26, 26, 0.9);
+      border: 2px solid #ffd700;
+      border-radius: 8px;
+      color: #ffd700;
+      font-size: 12px;
+      pointer-events: none;
+      z-index: 1001;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+      display: none;
+    `;
+    this.transformIndicator.innerHTML = `
+      <div id="transform-mode" style="font-weight: bold; margin-bottom: 5px;">Transform Mode</div>
+      <div id="transform-values" style="font-size: 11px; color: #ccc;"></div>
+      <div id="transform-hints" style="font-size: 10px; color: #888; margin-top: 5px;"></div>
+    `;
+    this.container.appendChild(this.transformIndicator);
   }
 
 
@@ -559,6 +585,10 @@ export default class UIManager {
         <div><strong>G:</strong> Open Asset Generator</div>
         <div><strong>L:</strong> Open Asset Library</div>
         <div><strong>Q / E:</strong> Rotate Selected Asset Left / Right</div>
+        <div><strong>X:</strong> Flip Selected Asset Horizontally</div>
+        <div><strong>Y:</strong> Flip Selected Asset Vertically</div>
+        <div><strong>+ / =:</strong> Scale Selected Asset Up</div>
+        <div><strong>-:</strong> Scale Selected Asset Down</div>
         <div><strong>ESC:</strong> Close Modals / Deselect</div>
         <div><strong>Delete:</strong> Remove Selected Asset</div>
         <div><strong>Ctrl+S:</strong> Save World</div>
@@ -1019,6 +1049,65 @@ export default class UIManager {
   /**
    * Clean up UI elements
    */
+  /**
+   * Update transform indicator
+   */
+  updateTransformIndicator(mode, values = {}) {
+    if (!this.transformIndicator) return;
+    
+    if (!mode) {
+      // Hide indicator
+      this.transformIndicator.style.display = 'none';
+      return;
+    }
+    
+    // Show indicator
+    this.transformIndicator.style.display = 'block';
+    
+    const modeDisplay = this.transformIndicator.querySelector('#transform-mode');
+    const valuesDisplay = this.transformIndicator.querySelector('#transform-values');
+    const hintsDisplay = this.transformIndicator.querySelector('#transform-hints');
+    
+    // Update mode display
+    let modeText = '';
+    let modeIcon = '';
+    let hints = '';
+    
+    switch (mode) {
+      case 'move':
+        modeText = 'Moving';
+        modeIcon = '&#8644;';
+        hints = 'Hold Shift: Snap to grid';
+        if (values.x !== undefined && values.y !== undefined) {
+          valuesDisplay.textContent = `Position: (${Math.round(values.x)}, ${Math.round(values.y)})`;
+        }
+        break;
+      case 'rotate':
+        modeText = 'Rotating';
+        modeIcon = '&#8635;';
+        hints = 'Hold Shift: Snap to 15°';
+        if (values.rotation !== undefined) {
+          const degrees = Math.round((values.rotation * 180 / Math.PI) % 360);
+          valuesDisplay.textContent = `Rotation: ${degrees}°`;
+        }
+        break;
+      case 'scale':
+        modeText = 'Scaling';
+        modeIcon = '&#8696;';
+        hints = 'Hold Ctrl: Uniform scaling';
+        if (values.scaleX !== undefined && values.scaleY !== undefined) {
+          valuesDisplay.textContent = `Scale: ${values.scaleX.toFixed(2)}x, ${values.scaleY.toFixed(2)}x`;
+        }
+        break;
+      default:
+        modeText = 'Transform';
+        modeIcon = '&#9881;';
+    }
+    
+    modeDisplay.innerHTML = `<span style="font-size: 16px;">${modeIcon}</span> ${modeText}`;
+    hintsDisplay.textContent = hints;
+  }
+  
   /**
    * Show toast notification
    */

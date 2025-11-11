@@ -40,6 +40,13 @@ export default class WorldManager {
     // Transformation handles
     this.transformHandles = null;
     
+    // Handle interaction state
+    this.activeHandle = null;
+    this.handleDragStart = { x: 0, y: 0 };
+    this.initialRotation = 0;
+    this.initialScale = { x: 1, y: 1 };
+    this.initialDistance = 0;
+    
     // Debounced save function (max once per 2 seconds)
     this.debouncedSave = debounce(() => this.saveWorld(), 2000);
     
@@ -805,6 +812,58 @@ export default class WorldManager {
   }
 
   /**
+   * Flip selected asset on X or Y axis
+   * @param {string} axis - 'x' or 'y'
+   */
+  flipSelectedAsset(axis) {
+    if (!this.selectedAsset) {
+      return;
+    }
+    
+    const currentScale = this.selectedAsset.scale;
+    
+    if (axis === 'x') {
+      // Flip horizontally
+      this.scaleAsset(this.selectedAsset.instanceId, -currentScale.x, currentScale.y);
+    } else if (axis === 'y') {
+      // Flip vertically
+      this.scaleAsset(this.selectedAsset.instanceId, currentScale.x, -currentScale.y);
+    }
+  }
+
+  /**
+   * Scale selected asset up or down
+   * @param {string} direction - 'up' or 'down'
+   */
+  scaleSelectedAsset(direction) {
+    if (!this.selectedAsset) {
+      return;
+    }
+    
+    const scaleStep = 0.1; // 10% change per keypress
+    const currentScale = this.selectedAsset.scale;
+    
+    let newScaleX, newScaleY;
+    if (direction === 'up') {
+      // Scale up (increase by 10%)
+      newScaleX = currentScale.x * (1 + scaleStep);
+      newScaleY = currentScale.y * (1 + scaleStep);
+    } else if (direction === 'down') {
+      // Scale down (decrease by 10%)
+      newScaleX = currentScale.x * (1 - scaleStep);
+      newScaleY = currentScale.y * (1 - scaleStep);
+      
+      // Prevent scaling to zero or negative
+      if (Math.abs(newScaleX) < 0.1) newScaleX = currentScale.x > 0 ? 0.1 : -0.1;
+      if (Math.abs(newScaleY) < 0.1) newScaleY = currentScale.y > 0 ? 0.1 : -0.1;
+    } else {
+      return;
+    }
+    
+    this.scaleAsset(this.selectedAsset.instanceId, newScaleX, newScaleY);
+  }
+
+  /**
    * Handle keyboard scaling (+ / - keys)
    * @param {string} direction - 'up' or 'down'
    */
@@ -844,7 +903,7 @@ export default class WorldManager {
     this.transformHandles = this.scene.add.container(asset.position.x, asset.position.y);
     this.transformHandles.setDepth(10000); // Always on top
     
-    // Create visual indicators (simple circles for now)
+    // Create visual indicators
     const handleSize = 8;
     const handleColor = 0xffff00;
     
@@ -855,16 +914,81 @@ export default class WorldManager {
     
     // Corner handles for scaling
     const corners = [
-      { x: -halfWidth, y: -halfHeight, type: 'scale-tl' },
-      { x: halfWidth, y: -halfHeight, type: 'scale-tr' },
-      { x: -halfWidth, y: halfHeight, type: 'scale-bl' },
-      { x: halfWidth, y: halfHeight, type: 'scale-br' }
+      { x: -halfWidth, y: -halfHeight, type: 'scale-tl', cursor: 'nwse-resize' },
+      { x: halfWidth, y: -halfHeight, type: 'scale-tr', cursor: 'nesw-resize' },
+      { x: -halfWidth, y: halfHeight, type: 'scale-bl', cursor: 'nesw-resize' },
+      { x: halfWidth, y: halfHeight, type: 'scale-br', cursor: 'nwse-resize' }
     ];
     
     corners.forEach(corner => {
       const handle = this.scene.add.circle(corner.x, corner.y, handleSize, handleColor);
       handle.setStrokeStyle(2, 0x000000);
       handle.setData('handleType', corner.type);
+      handle.setData('cursor', corner.cursor);
+      
+      // Make handle interactive
+      handle.setInteractive({ useHandCursor: true });
+      
+      // Add hover effects
+      handle.on('pointerover', () => {
+        handle.setScale(1.3);
+        handle.setFillStyle(0xffffff);
+        this.scene.input.setDefaultCursor(corner.cursor);
+      });
+      
+      handle.on('pointerout', () => {
+        if (this.activeHandle !== handle) {
+          handle.setScale(1);
+          handle.setFillStyle(handleColor);
+          this.scene.input.setDefaultCursor('default');
+        }
+      });
+      
+      // Add drag handlers
+      handle.on('pointerdown', (pointer) => {
+        this._startHandleDrag(handle, pointer);
+      });
+      
+      this.transformHandles.add(handle);
+    });
+    
+    // Edge handles for non-proportional scaling
+    const edges = [
+      { x: 0, y: -halfHeight, type: 'scale-top', cursor: 'ns-resize' },
+      { x: 0, y: halfHeight, type: 'scale-bottom', cursor: 'ns-resize' },
+      { x: -halfWidth, y: 0, type: 'scale-left', cursor: 'ew-resize' },
+      { x: halfWidth, y: 0, type: 'scale-right', cursor: 'ew-resize' }
+    ];
+    
+    edges.forEach(edge => {
+      const handle = this.scene.add.circle(edge.x, edge.y, handleSize * 0.8, handleColor);
+      handle.setStrokeStyle(2, 0x000000);
+      handle.setData('handleType', edge.type);
+      handle.setData('cursor', edge.cursor);
+      
+      // Make handle interactive
+      handle.setInteractive({ useHandCursor: true });
+      
+      // Add hover effects
+      handle.on('pointerover', () => {
+        handle.setScale(1.3);
+        handle.setFillStyle(0xffffff);
+        this.scene.input.setDefaultCursor(edge.cursor);
+      });
+      
+      handle.on('pointerout', () => {
+        if (this.activeHandle !== handle) {
+          handle.setScale(1);
+          handle.setFillStyle(handleColor);
+          this.scene.input.setDefaultCursor('default');
+        }
+      });
+      
+      // Add drag handlers
+      handle.on('pointerdown', (pointer) => {
+        this._startHandleDrag(handle, pointer);
+      });
+      
       this.transformHandles.add(handle);
     });
     
@@ -872,7 +996,65 @@ export default class WorldManager {
     const rotationHandle = this.scene.add.circle(0, -halfHeight - 20, handleSize, 0xff00ff);
     rotationHandle.setStrokeStyle(2, 0x000000);
     rotationHandle.setData('handleType', 'rotate');
+    rotationHandle.setData('cursor', 'grab');
+    
+    // Make handle interactive
+    rotationHandle.setInteractive({ useHandCursor: true });
+    
+    // Add hover effects
+    rotationHandle.on('pointerover', () => {
+      rotationHandle.setScale(1.3);
+      rotationHandle.setFillStyle(0xff88ff);
+      this.scene.input.setDefaultCursor('grab');
+    });
+    
+    rotationHandle.on('pointerout', () => {
+      if (this.activeHandle !== rotationHandle) {
+        rotationHandle.setScale(1);
+        rotationHandle.setFillStyle(0xff00ff);
+        this.scene.input.setDefaultCursor('default');
+      }
+    });
+    
+    // Add drag handlers
+    rotationHandle.on('pointerdown', (pointer) => {
+      this._startHandleDrag(rotationHandle, pointer);
+      this.scene.input.setDefaultCursor('grabbing');
+    });
+    
     this.transformHandles.add(rotationHandle);
+    
+    // Add center drag handle (for moving the asset)
+    const centerHandle = this.scene.add.circle(0, 0, handleSize * 1.2, 0x00ff00);
+    centerHandle.setStrokeStyle(2, 0x000000);
+    centerHandle.setAlpha(0.5);
+    centerHandle.setData('handleType', 'move');
+    centerHandle.setData('cursor', 'move');
+    
+    // Make handle interactive
+    centerHandle.setInteractive({ useHandCursor: true });
+    
+    // Add hover effects
+    centerHandle.on('pointerover', () => {
+      centerHandle.setScale(1.3);
+      centerHandle.setAlpha(0.8);
+      this.scene.input.setDefaultCursor('move');
+    });
+    
+    centerHandle.on('pointerout', () => {
+      if (this.activeHandle !== centerHandle) {
+        centerHandle.setScale(1);
+        centerHandle.setAlpha(0.5);
+        this.scene.input.setDefaultCursor('default');
+      }
+    });
+    
+    // Add drag handlers
+    centerHandle.on('pointerdown', (pointer) => {
+      this._startHandleDrag(centerHandle, pointer);
+    });
+    
+    this.transformHandles.add(centerHandle);
   }
 
   /**
@@ -897,14 +1079,271 @@ export default class WorldManager {
     
     const handles = this.transformHandles.list;
     
-    // Update corner handles
+    // Update corner handles (0-3)
     if (handles[0]) handles[0].setPosition(-halfWidth, -halfHeight);
     if (handles[1]) handles[1].setPosition(halfWidth, -halfHeight);
     if (handles[2]) handles[2].setPosition(-halfWidth, halfHeight);
     if (handles[3]) handles[3].setPosition(halfWidth, halfHeight);
     
-    // Update rotation handle
-    if (handles[4]) handles[4].setPosition(0, -halfHeight - 20);
+    // Update edge handles (4-7)
+    if (handles[4]) handles[4].setPosition(0, -halfHeight);
+    if (handles[5]) handles[5].setPosition(0, halfHeight);
+    if (handles[6]) handles[6].setPosition(-halfWidth, 0);
+    if (handles[7]) handles[7].setPosition(halfWidth, 0);
+    
+    // Update rotation handle (8)
+    if (handles[8]) handles[8].setPosition(0, -halfHeight - 20);
+    
+    // Center handle (9) stays at 0, 0
+  }
+  
+  /**
+   * Start dragging a transformation handle
+   * @private
+   */
+  _startHandleDrag(handle, pointer) {
+    if (!this.selectedAsset) return;
+    
+    this.activeHandle = handle;
+    const handleType = handle.getData('handleType');
+    
+    // Convert pointer to world coordinates
+    const worldPoint = this.scene.cameras.main.getWorldPoint(pointer.x, pointer.y);
+    this.handleDragStart = { x: worldPoint.x, y: worldPoint.y };
+    
+    // Store initial values based on handle type
+    if (handleType === 'rotate') {
+      this.initialRotation = this.selectedAsset.rotation;
+      
+      // Calculate initial angle from asset center to pointer
+      const dx = worldPoint.x - this.selectedAsset.position.x;
+      const dy = worldPoint.y - this.selectedAsset.position.y;
+      this.initialAngle = Math.atan2(dy, dx);
+      
+      // Update UI indicator
+      this._updateTransformUI('rotate');
+    } else if (handleType.startsWith('scale')) {
+      this.initialScale = { ...this.selectedAsset.scale };
+      
+      // Calculate initial distance from asset center to pointer
+      const dx = worldPoint.x - this.selectedAsset.position.x;
+      const dy = worldPoint.y - this.selectedAsset.position.y;
+      this.initialDistance = Math.sqrt(dx * dx + dy * dy);
+      
+      // Update UI indicator
+      this._updateTransformUI('scale');
+    } else if (handleType === 'move') {
+      // Calculate offset from pointer to asset position
+      this.dragOffset.x = this.selectedAsset.position.x - worldPoint.x;
+      this.dragOffset.y = this.selectedAsset.position.y - worldPoint.y;
+      
+      // Update UI indicator
+      this._updateTransformUI('move');
+    }
+    
+    // Set up pointer move and up listeners
+    this.scene.input.on('pointermove', this._updateHandleDrag, this);
+    this.scene.input.on('pointerup', this._stopHandleDrag, this);
+    
+    // Prevent event from bubbling to asset click handler
+    pointer.event.stopPropagation();
+  }
+  
+  /**
+   * Update handle drag (called on pointer move)
+   * @private
+   */
+  _updateHandleDrag(pointer) {
+    if (!this.activeHandle || !this.selectedAsset) return;
+    
+    const handleType = this.activeHandle.getData('handleType');
+    const worldPoint = this.scene.cameras.main.getWorldPoint(pointer.x, pointer.y);
+    
+    if (handleType === 'rotate') {
+      this._updateRotation(worldPoint);
+    } else if (handleType.startsWith('scale')) {
+      this._updateScale(worldPoint, handleType);
+    } else if (handleType === 'move') {
+      this._updateMove(worldPoint);
+    }
+  }
+  
+  /**
+   * Stop handle drag (called on pointer up)
+   * @private
+   */
+  _stopHandleDrag(pointer) {
+    if (!this.activeHandle) return;
+    
+    // Reset cursor
+    this.scene.input.setDefaultCursor('default');
+    
+    // Reset active handle visual state
+    const handleType = this.activeHandle.getData('handleType');
+    if (handleType === 'rotate') {
+      this.activeHandle.setScale(1);
+      this.activeHandle.setFillStyle(0xff00ff);
+    } else if (handleType === 'move') {
+      this.activeHandle.setScale(1);
+      this.activeHandle.setAlpha(0.5);
+    } else {
+      this.activeHandle.setScale(1);
+      this.activeHandle.setFillStyle(0xffff00);
+    }
+    
+    this.activeHandle = null;
+    
+    // Remove listeners
+    this.scene.input.off('pointermove', this._updateHandleDrag, this);
+    this.scene.input.off('pointerup', this._stopHandleDrag, this);
+    
+    // Hide transform UI indicator
+    this._updateTransformUI(null);
+    
+    // Save world state after transformation
+    this.debouncedSave();
+  }
+  
+  /**
+   * Update rotation based on mouse position
+   * @private
+   */
+  _updateRotation(worldPoint) {
+    if (!this.selectedAsset) return;
+    
+    // Calculate angle from asset center to current pointer position
+    const dx = worldPoint.x - this.selectedAsset.position.x;
+    const dy = worldPoint.y - this.selectedAsset.position.y;
+    const currentAngle = Math.atan2(dy, dx);
+    
+    // Calculate rotation delta
+    const angleDelta = currentAngle - this.initialAngle;
+    let newRotation = this.initialRotation + angleDelta;
+    
+    // Check for Shift key to snap to 15-degree increments
+    if (this.scene.input.keyboard.checkDown(this.scene.input.keyboard.addKey('SHIFT'), 0)) {
+      const snapAngle = Math.PI / 12; // 15 degrees
+      newRotation = Math.round(newRotation / snapAngle) * snapAngle;
+    }
+    
+    // Apply rotation
+    this.rotateAsset(this.selectedAsset.instanceId, newRotation);
+    
+    // Update handles
+    this._updateTransformHandles();
+    
+    // Update UI indicator
+    this._updateTransformUI('rotate', { rotation: newRotation });
+  }
+  
+  /**
+   * Update scale based on mouse position
+   * @private
+   */
+  _updateScale(worldPoint, handleType) {
+    if (!this.selectedAsset) return;
+    
+    const asset = this.selectedAsset;
+    const centerX = asset.position.x;
+    const centerY = asset.position.y;
+    
+    // Check for Ctrl key for uniform scaling
+    const uniformScale = this.scene.input.keyboard.checkDown(this.scene.input.keyboard.addKey('CTRL'), 0);
+    
+    let newScaleX = asset.scale.x;
+    let newScaleY = asset.scale.y;
+    
+    if (handleType.includes('corner') || handleType === 'scale-tl' || handleType === 'scale-tr' || 
+        handleType === 'scale-bl' || handleType === 'scale-br') {
+      // Corner handles - proportional scaling
+      const dx = worldPoint.x - centerX;
+      const dy = worldPoint.y - centerY;
+      const currentDistance = Math.sqrt(dx * dx + dy * dy);
+      
+      if (this.initialDistance > 0) {
+        const scaleFactor = currentDistance / this.initialDistance;
+        newScaleX = this.initialScale.x * scaleFactor;
+        newScaleY = this.initialScale.y * scaleFactor;
+      }
+    } else if (handleType === 'scale-top' || handleType === 'scale-bottom') {
+      // Vertical edge handles
+      const dy = Math.abs(worldPoint.y - centerY);
+      const initialDy = Math.abs(this.handleDragStart.y - centerY);
+      
+      if (initialDy > 0) {
+        const scaleFactor = dy / initialDy;
+        newScaleY = this.initialScale.y * scaleFactor;
+        
+        if (uniformScale) {
+          newScaleX = this.initialScale.x * scaleFactor;
+        }
+      }
+    } else if (handleType === 'scale-left' || handleType === 'scale-right') {
+      // Horizontal edge handles
+      const dx = Math.abs(worldPoint.x - centerX);
+      const initialDx = Math.abs(this.handleDragStart.x - centerX);
+      
+      if (initialDx > 0) {
+        const scaleFactor = dx / initialDx;
+        newScaleX = this.initialScale.x * scaleFactor;
+        
+        if (uniformScale) {
+          newScaleY = this.initialScale.y * scaleFactor;
+        }
+      }
+    }
+    
+    // Clamp scale values
+    const minScale = 0.1;
+    const maxScale = 5.0;
+    newScaleX = Phaser.Math.Clamp(Math.abs(newScaleX), minScale, maxScale) * Math.sign(asset.scale.x);
+    newScaleY = Phaser.Math.Clamp(Math.abs(newScaleY), minScale, maxScale) * Math.sign(asset.scale.y);
+    
+    // Apply scale
+    this.scaleAsset(asset.instanceId, newScaleX, newScaleY);
+    
+    // Update handles
+    this._updateTransformHandles();
+    
+    // Update UI indicator
+    this._updateTransformUI('scale', { scaleX: newScaleX, scaleY: newScaleY });
+  }
+  
+  /**
+   * Update move based on mouse position
+   * @private
+   */
+  _updateMove(worldPoint) {
+    if (!this.selectedAsset) return;
+    
+    // Calculate new position with offset
+    let newX = worldPoint.x + this.dragOffset.x;
+    let newY = worldPoint.y + this.dragOffset.y;
+    
+    // Check for Shift key to snap to grid
+    if (this.scene.input.keyboard.checkDown(this.scene.input.keyboard.addKey('SHIFT'), 0)) {
+      const gridSize = 16; // Configurable grid size
+      newX = Math.round(newX / gridSize) * gridSize;
+      newY = Math.round(newY / gridSize) * gridSize;
+    }
+    
+    // Move the asset
+    this.moveAsset(this.selectedAsset.instanceId, newX, newY);
+    
+    // Update UI indicator
+    this._updateTransformUI('move', { x: newX, y: newY });
+  }
+  
+  /**
+   * Update transform UI indicator
+   * @private
+   */
+  _updateTransformUI(mode, values = {}) {
+    // Get UIManager from UIScene if available
+    const uiScene = this.scene.scene.get('UIScene');
+    if (uiScene && uiScene.uiManager) {
+      uiScene.uiManager.updateTransformIndicator(mode, values);
+    }
   }
 
   /**
