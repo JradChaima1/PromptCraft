@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Error Handling Test - Pollinations API</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 30px;
+      border-radius: 10px;
+      margin-bottom: 30px;
+    }
+    h1 { margin: 0 0 10px 0; }
+    .subtitle { opacity: 0.9; margin: 0; }
+    .test-section {
+      background: white;
+      padding: 25px;
+      margin-bottom: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .test-section h2 {
+      margin-top: 0;
+      color: #333;
+      border-bottom: 2px solid #667eea;
+      padding-bottom: 10px;
+    }
+    .test-controls {
+      display: flex;
+      gap: 10px;
+      margin: 15px 0;
+      flex-wrap: wrap;
+    }
+    button {
+      padding: 12px 24px;
+      font-size: 14px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.3s;
+    }
+    .btn-primary {
+      background: #667eea;
+      color: white;
+    }
+    .btn-primary:hover { background: #5568d3; }
+    .btn-danger {
+      background: #e74c3c;
+      color: white;
+    }
+    .btn-danger:hover { background: #c0392b; }
+    .btn-warning {
+      background: #f39c12;
+      color: white;
+    }
+    .btn-warning:hover { background: #d68910; }
+    .btn-success {
+      background: #27ae60;
+      color: white;
+    }
+    .btn-success:hover { background: #229954; }
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .status {
+      padding: 15px;
+      border-radius: 6px;
+      margin: 15px 0;
+      font-weight: 500;
+    }
+    .status.info {
+      background: #e3f2fd;
+      color: #1976d2;
+      border-left: 4px solid #1976d2;
+    }
+    .status.success {
+      background: #e8f5e9;
+      color: #2e7d32;
+      border-left: 4px solid #2e7d32;
+    }
+    .status.error {
+      background: #ffebee;
+      color: #c62828;
+      border-left: 4px solid #c62828;
+    }
+    .status.warning {
+      background: #fff3e0;
+      color: #ef6c00;
+      border-left: 4px solid #ef6c00;
+    }
+    .log-container {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 15px;
+      border-radius: 6px;
+      max-height: 300px;
+      overflow-y: auto;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      margin-top: 15px;
+    }
+    .log-entry {
+      margin: 5px 0;
+      padding: 5px;
+      border-left: 3px solid transparent;
+    }
+    .log-entry.error { border-left-color: #e74c3c; color: #ff6b6b; }
+    .log-entry.success { border-left-color: #27ae60; color: #51cf66; }
+    .log-entry.info { border-left-color: #3498db; color: #74c0fc; }
+    .log-entry.warning { border-left-color: #f39c12; color: #ffd43b; }
+    .test-description {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 6px;
+      margin-bottom: 15px;
+      border-left: 4px solid #667eea;
+    }
+    .test-description p {
+      margin: 5px 0;
+    }
+    .test-description strong {
+      color: #667eea;
+    }
+    .input-group {
+      margin: 15px 0;
+    }
+    .input-group label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 600;
+      color: #555;
+    }
+    .input-group input {
+      width: 100%;
+      padding: 10px;
+      border: 2px solid #ddd;
+      border-radius: 6px;
+      font-size: 14px;
+      box-sizing: border-box;
+    }
+    .input-group input:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+    .timer {
+      font-size: 24px;
+      font-weight: bold;
+      color: #667eea;
+      text-align: center;
+      padding: 10px;
+      background: #f8f9fa;
+      border-radius: 6px;
+      margin: 10px 0;
+    }
+    .requirements {
+      background: #fff9e6;
+      padding: 15px;
+      border-radius: 6px;
+      margin-top: 15px;
+      border-left: 4px solid #f39c12;
+    }
+    .requirements h3 {
+      margin-top: 0;
+      color: #f39c12;
+    }
+    .requirements ul {
+      margin: 10px 0;
+      padding-left: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🔧 Error Handling Test Suite</h1>
+    <p class="subtitle">Comprehensive testing for Pollinations API error scenarios</p>
+  </div>
+
+  <!-- Test 1: Network Failure -->
+  <div class="test-section">
+    <h2>Test 1: Network Failure Simulation</h2>
+    <div class="test-description">
+      <p><strong>Purpose:</strong> Verify retry logic works when network is unavailable</p>
+      <p><strong>Expected:</strong> 3 retry attempts with exponential backoff (1s, 2s, 4s)</p>
+      <p><strong>Instructions:</strong> Disconnect your internet, then click "Test Network Failure"</p>
+    </div>
+    <div class="test-controls">
+      <button class="btn-danger" onclick="testNetworkFailure()">Test Network Failure</button>
+      <button class="btn-primary" onclick="clearLog('networkLog')">Clear Log</button>
+    </div>
+    <div id="networkStatus" class="status info">Ready to test. Please disconnect internet first.</div>
+    <div id="networkLog" class="log-container"></div>
+  </div>
+
+  <!-- Test 2: Timeout Handling -->
+  <div class="test-section">
+    <h2>Test 2: Timeout Handling</h2>
+    <div class="test-description">
+      <p><strong>Purpose:</strong> Verify 30-second timeout works correctly</p>
+      <p><strong>Expected:</strong> Request should timeout after 30 seconds with appropriate error message</p>
+      <p><strong>Instructions:</strong> Use an invalid/slow URL to trigger timeout</p>
+    </div>
+    <div class="test-controls">
+      <button class="btn-warning" onclick="testTimeout()">Test Timeout (30s)</button>
+      <button class="btn-primary" onclick="clearLog('timeoutLog')">Clear Log</button>
+    </div>
+    <div id="timeoutTimer" class="timer">00:00</div>
+    <div id="timeoutStatus" class="status info">Ready to test timeout handling.</div>
+    <div id="timeoutLog" class="log-container"></div>
+  </div>
+
+  <!-- Test 3: Invalid Parameters -->
+  <div class="test-section">
+    <h2>Test 3: Invalid Parameters</h2>
+    <div class="test-description">
+      <p><strong>Purpose:</strong> Verify validation of generation parameters</p>
+      <p><strong>Expected:</strong> User-friendly error messages for invalid inputs</p>
+    </div>
+    <div class="input-group">
+      <label>Test Scenario:</label>
+      <select id="invalidParamType" style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 6px;">
+        <option value="empty">Empty Description</option>
+        <option value="size-too-small">Image Size Too Small (< 16px)</option>
+        <option value="size-too-large">Image Size Too Large (> 1024px)</option>
+        <option value="invalid-model">Invalid Model Name</option>
+        <option value="negative-size">Negative Image Size</option>
+      </select>
+    </div>
+    <div class="test-controls">
+      <button class="btn-primary" onclick="testInvalidParams()">Test Invalid Parameters</button>
+      <button class="btn-primary" onclick="clearLog('paramsLog')">Clear Log</button>
+    </div>
+    <div id="paramsStatus" class="status info">Select a scenario and click test.</div>
+    <div id="paramsLog" class="log-container"></div>
+  </div>
+
+  <!-- Test 4: Rate Limiting -->
+  <div class="test-section">
+    <h2>Test 4: Rate Limiting Simulation</h2>
+    <div class="test-description">
+      <p><strong>Purpose:</strong> Verify handling of rate limit errors (HTTP 429)</p>
+      <p><strong>Expected:</strong> User-friendly message suggesting to wait</p>
+      <p><strong>Note:</strong> This simulates a 429 response since we can't easily trigger real rate limiting</p>
+    </div>
+    <div class="test-controls">
+      <button class="btn-warning" onclick="testRateLimiting()">Simulate Rate Limit</button>
+      <button class="btn-primary" onclick="clearLog('rateLimitLog')">Clear Log</button>
+    </div>
+    <div id="rateLimitStatus" class="status info">Ready to test rate limiting.</div>
+    <div id="rateLimitLog" class="log-container"></div>
+  </div>

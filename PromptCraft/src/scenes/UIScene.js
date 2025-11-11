@@ -18,10 +18,6 @@ export default class UIScene extends Phaser.Scene {
         // Get reference to GameScene
         this.gameScene = this.scene.get('GameScene');
         
-        // Get managers from GameScene
-        this.assetManager = this.gameScene.assetManager;
-        this.worldManager = this.gameScene.worldManager;
-        
         // Initialize UI Manager
         this.uiManager = new UIManager(this);
         
@@ -31,10 +27,18 @@ export default class UIScene extends Phaser.Scene {
         // Set up event listeners for communication with GameScene
         this.setupEventListeners();
         
-        // Update input controller reference in GameScene
-        if (this.gameScene.inputController) {
-            this.gameScene.inputController.uiManager = this.uiManager;
-        }
+        // Wait for game to start before getting managers
+        this.gameScene.events.on('game-started', () => {
+            this.assetManager = this.gameScene.assetManager;
+            this.worldManager = this.gameScene.worldManager;
+            
+            // Update input controller reference
+            if (this.gameScene.inputController) {
+                this.gameScene.inputController.uiManager = this.uiManager;
+            }
+            
+            console.log('UIScene managers initialized');
+        });
         
         console.log('UIScene initialized');
     }
@@ -173,32 +177,22 @@ export default class UIScene extends Phaser.Scene {
      */
     async handleAssetGeneration(params, callback) {
         try {
-            // Show loading modal with appropriate message
-            const loadingMessage = params.isAnimation 
-                ? `Generating animation (${params.nFrames || 8} frames)...` 
-                : 'Generating asset...';
-            this.uiManager.showLoadingModal(loadingMessage);
-            
-            // Generate asset (check if animation or static)
-            let result;
-            if (params.isAnimation) {
-                // Show progress for animations
-                this.uiManager.showProgress('Generating animation frames...', 0);
-                result = await this.assetManager.generateAnimatedAsset(params);
-                this.uiManager.hideProgress();
-            } else {
-                result = await this.assetManager.generateAsset(params);
+            // Check if managers are initialized
+            if (!this.assetManager) {
+                const error = 'Please start the game first by clicking PLAY';
+                this.uiManager.showErrorModal(error);
+                if (callback) callback(false, error);
+                return;
             }
+            
+            // Show loading modal
+            this.uiManager.showLoadingModal('Generating asset...');
+            
+            // Generate asset
+            const result = await this.assetManager.generateAsset(params);
             
             // Hide loading modal
             this.uiManager.hideAllModals();
-            
-            // Update credits display
-            if (result.usage) {
-                this.credits = result.usage.creditsRemaining || 0;
-                this.generations = result.usage.generationsRemaining || 0;
-                this.uiManager.updateCreditsDisplay(this.credits, this.generations);
-            }
             
             // Show success toast
             this.uiManager.showToast(
@@ -299,9 +293,8 @@ export default class UIScene extends Phaser.Scene {
                 this.uiManager.showLibraryModal(assets);
                 break;
             case 'settings':
-                // Get current settings and show settings modal
-                const settings = this.gameScene.storageService.loadSettings();
-                this.uiManager.showSettingsModal(settings);
+                // Show settings modal (no API token needed)
+                this.uiManager.showSettingsModal();
                 break;
             case 'help':
                 // Show help modal
@@ -373,13 +366,7 @@ export default class UIScene extends Phaser.Scene {
      */
     handleSettingsSave(settings) {
         try {
-            // Save API token
-            if (settings.apiToken) {
-                this.gameScene.storageService.saveAPIToken(settings.apiToken);
-                this.gameScene.apiService.setApiToken(settings.apiToken);
-            }
-            
-            // Save other settings
+            // Save settings (no API token needed for Pollinations)
             this.gameScene.storageService.saveSettings({
                 worldWidth: settings.worldWidth,
                 worldHeight: settings.worldHeight

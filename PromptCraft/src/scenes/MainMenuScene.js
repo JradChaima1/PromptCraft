@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 
 /**
- * MainMenuScene - Main menu with play, options, and credits
+ * MainMenuScene - Main menu with play, options, and about
  * Transitions to GameScene when play is clicked
  */
 export default class MainMenuScene extends Phaser.Scene {
@@ -50,12 +50,12 @@ export default class MainMenuScene extends Phaser.Scene {
             () => this.showOptions()
         );
 
-        // Credits button
-        const creditsButton = this.createPixelButton(
+        // About button
+        const aboutButton = this.createPixelButton(
             centerX,
             centerY + 100,
-            'CREDITS',
-            () => this.showCredits()
+            'ABOUT',
+            () => this.showAbout()
         );
 
         // Handle window resize
@@ -118,7 +118,7 @@ export default class MainMenuScene extends Phaser.Scene {
         this.startGame();
     }
 
-    showCredits() {
+    showAbout() {
         const centerX = this.cameras.main.centerX;
         const centerY = this.cameras.main.centerY;
 
@@ -130,8 +130,8 @@ export default class MainMenuScene extends Phaser.Scene {
         overlay.fillStyle(0x000000, 0.9);
         overlay.fillRect(0, 0, this.cameras.main.width, this.cameras.main.height);
 
-        // Credits text
-        const creditsText = this.add.text(centerX, centerY - 100, 'CREDITS', {
+        // About text
+        const aboutText = this.add.text(centerX, centerY - 100, 'ABOUT', {
             fontSize: '36px',
             color: '#ffffff',
             fontFamily: 'monospace',
@@ -142,7 +142,7 @@ export default class MainMenuScene extends Phaser.Scene {
         const info = this.add.text(centerX, centerY, 
             'AI Sandbox Builder\n\n' +
             'Built with Phaser 3\n' +
-            'Powered by Pixellab API\n\n' +
+            'Powered by Pollinations.ai\n\n' +
             'Generate pixel art assets with AI\n' +
             'Build and share your worlds',
             {

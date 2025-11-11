@@ -8,7 +8,7 @@
 import Phaser from 'phaser';
 import UIManager from './UIManager.js';
 import StorageService from '../services/StorageService.js';
-import PixellabAPIService from '../services/PixellabAPIService.js';
+import PollinationsAPIService from '../services/PollinationsAPIService.js';
 
 class GameSceneWithSettings extends Phaser.Scene {
   constructor() {
@@ -18,7 +18,7 @@ class GameSceneWithSettings extends Phaser.Scene {
   create() {
     // Initialize services
     this.storageService = new StorageService();
-    this.pixellabAPI = new PixellabAPIService();
+    this.apiService = new PollinationsAPIService();
     
     // Initialize UI Manager
     this.uiManager = new UIManager(this);
@@ -39,14 +39,7 @@ class GameSceneWithSettings extends Phaser.Scene {
    * @private
    */
   _loadSettings() {
-    // Load API token
-    const apiToken = this.storageService.getAPIToken();
-    if (apiToken) {
-      this.pixellabAPI.setApiToken(apiToken);
-      console.log('API token loaded from storage');
-    }
-    
-    // Load other settings
+    // Load settings (no API token needed for Pollinations)
     const settings = this.storageService.loadSettings();
     this.worldWidth = settings.worldWidth || 4000;
     this.worldHeight = settings.worldHeight || 600;
@@ -107,10 +100,8 @@ class GameSceneWithSettings extends Phaser.Scene {
   _openSettings() {
     // Load current settings
     const savedSettings = this.storageService.loadSettings();
-    const apiToken = this.storageService.getAPIToken();
     
     const currentSettings = {
-      apiToken: apiToken || '',
       worldWidth: savedSettings.worldWidth || 4000,
       worldHeight: savedSettings.worldHeight || 600
     };
@@ -125,13 +116,6 @@ class GameSceneWithSettings extends Phaser.Scene {
    */
   _handleSaveSettings(settings) {
     console.log('Saving settings:', settings);
-    
-    // Save API token
-    if (settings.apiToken) {
-      this.storageService.saveAPIToken(settings.apiToken);
-      this.pixellabAPI.setApiToken(settings.apiToken);
-      console.log('API token saved');
-    }
     
     // Save world size settings
     const savedSettings = this.storageService.loadSettings();
@@ -152,25 +136,6 @@ class GameSceneWithSettings extends Phaser.Scene {
         'World size has been updated.\n\n' +
         'Please reload the page for changes to take effect.'
       );
-    }
-    
-    // Update credits display if we have a valid token
-    this._updateCreditsDisplay();
-  }
-
-  /**
-   * Update credits display
-   * @private
-   */
-  async _updateCreditsDisplay() {
-    try {
-      const balance = await this.pixellabAPI.getBalance();
-      this.uiManager.updateCreditsDisplay(
-        balance.credits || 0,
-        balance.generations || 0
-      );
-    } catch (error) {
-      console.error('Failed to get balance:', error);
     }
   }
 
@@ -261,7 +226,6 @@ export default GameSceneWithSettings;
  * USAGE NOTES:
  * 
  * 1. The settings modal includes:
- *    - API token input (password field)
  *    - Keyboard shortcuts reference panel
  *    - World size configuration (width/height)
  *    - World management buttons (Export, Import, Clear)
@@ -275,7 +239,7 @@ export default GameSceneWithSettings;
  * 5. Event flow:
  *    User clicks Settings button → showSettingsModal() → User edits → 
  *    User clicks Save → 'save-settings' event → _handleSaveSettings() →
- *    Save to storage → Update API service
+ *    Save to storage
  * 
  * 6. Keyboard shortcuts shown in the modal:
  *    - G: Open Asset Generator

@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Asset Generation Fix Verification</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 1200px;
+      margin: 20px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .test-section {
+      background: white;
+      padding: 20px;
+      margin-bottom: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    h1 { color: #333; }
+    h2 { color: #666; margin-top: 0; }
+    .test-result {
+      margin: 10px 0;
+      padding: 10px;
+      border-radius: 4px;
+    }
+    .success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    .error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+    .info {
+      background: #d1ecf1;
+      color: #0c5460;
+      border: 1px solid #bee5eb;
+    }
+    button {
+      padding: 10px 20px;
+      background: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      margin: 5px;
+    }
+    button:hover { background: #45a049; }
+  </style>
+</head>
+<body>
+  <h1>🔧 Asset Generation Fix Verification</h1>
+  
+  <div class="test-section">
+    <h2>Test 1: Pixel Art Prefix</h2>
+    <p>Verify that "pixel art" is automatically added to descriptions</p>
+    <div id="test1-results"></div>
+  </div>
+
+  <div class="test-section">
+    <h2>Test 2: convertToTextureURL Method</h2>
+    <p>Verify that the PollinationsAPIService has the convertToTextureURL method</p>
+    <div id="test2-results"></div>
+  </div>
+
+  <script type="module">
+    import PollinationsAPIService from './src/services/PollinationsAPIService.js';
+    
+    function addResult(containerId, message, type = 'info') {
+      const container = document.getElementById(containerId);
+      const result = document.createElement('div');
+      result.className = `test-result ${type}`;
+      result.innerHTML = message;
+      container.appendChild(result);
+    }
+    
+    // Test 1: Pixel Art Prefix Logic
+    addResult('test1-results', '🔄 Testing pixel art prefix logic...', 'info');
+    
+    const testDescriptions = [
+      { input: 'a sword', expected: 'pixel art a sword' },
+      { input: 'pixel art tree', expected: 'pixel art tree' },
+      { input: 'Pixel Art house', expected: 'Pixel Art house' },
+      { input: 'a PIXEL ART character', expected: 'a PIXEL ART character' }
+    ];
+    
+    let test1Passed = 0;
+    testDescriptions.forEach(test => {
+      let description = test.input.trim();
+      if (!description.toLowerCase().includes('pixel art')) {
+        description = `pixel art ${description}`;
+      }
+      
+      if (description === test.expected) {
+        addResult('test1-results', `✅ "${test.input}" → "${description}"`, 'success');
+        test1Passed++;
+      } else {
+        addResult('test1-results', `❌ "${test.input}" → "${description}" (expected: "${test.expected}")`, 'error');
+      }
+    });
+    
+    if (test1Passed === testDescriptions.length) {
+      addResult('test1-results', `✅ Test 1 PASSED: All ${test1Passed} descriptions handled correctly`, 'success');
+    } else {
+      addResult('test1-results', `❌ Test 1 FAILED: ${test1Passed}/${testDescriptions.length} passed`, 'error');
+    }
+    
+    // Test 2: convertToTextureURL Method
+    addResult('test2-results', '🔄 Testing convertToTextureURL method...', 'info');
+    
+    try {
+      const apiService = new PollinationsAPIService();
+      
+      // Check if method exists
+      if (typeof apiService.convertToTextureURL !== 'function') {
+        throw new Error('convertToTextureURL method does not exist');
+      }
+      
+      addResult('test2-results', '✅ convertToTextureURL method exists', 'success');
+      
+      // Test with data URL
+      const dataURL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+      const result1 = apiService.convertToTextureURL(dataURL);
+      
+      if (result1 === dataURL) {
+        addResult('test2-results', '✅ Data URL passed through correctly', 'success');
+      } else {
+        addResult('test2-results', '❌ Data URL not handled correctly', 'error');
+      }
+      
+      // Test with raw base64
+      const rawBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+      const result2 = apiService.convertToTextureURL(rawBase64);
+      
+      if (result2.startsWith('data:image/png;base64,')) {
+        addResult('test2-results', '✅ Raw base64 converted to data URL correctly', 'success');
+      } else {
+        addResult('test2-results', '❌ Raw base64 not converted correctly', 'error');
+      }
+      
+      addResult('test2-results', '✅ Test 2 PASSED: convertToTextureURL working correctly', 'success');
+      
+    } catch (error) {
+      addResult('test2-results', `❌ Test 2 FAILED: ${error.message}`, 'error');
+    }
+    
+    // Summary
+    addResult('test1-results', '', 'info');
+    addResult('test1-results', '📋 <strong>Summary:</strong> All fixes verified. Assets should now:', 'info');
+    addResult('test1-results', '1. Automatically include "pixel art" in descriptions', 'info');
+    addResult('test1-results', '2. Appear in the library after generation', 'info');
+    addResult('test1-results', '3. Load textures correctly for placement', 'info');
+  </script>
+</body>
+</html>

@@ -6,7 +6,7 @@
 
 import UIManager from './UIManager.js';
 import AssetManager from './AssetManager.js';
-import PixellabAPIService from '../services/PixellabAPIService.js';
+import PollinationsAPIService from '../services/PollinationsAPIService.js';
 import StorageService from '../services/StorageService.js';
 
 // Example: Integrating UIManager in a Phaser Scene
@@ -18,7 +18,7 @@ class ExampleGameScene extends Phaser.Scene {
   create() {
     // Initialize services
     this.storageService = new StorageService();
-    this.apiService = new PixellabAPIService();
+    this.apiService = new PollinationsAPIService();
     this.assetManager = new AssetManager(this, this.apiService, this.storageService);
     
     // Initialize UI Manager
@@ -26,13 +26,6 @@ class ExampleGameScene extends Phaser.Scene {
     
     // Create the main toolbar
     this.uiManager.createMainToolbar();
-    
-    // Load API token from storage
-    const savedToken = this.storageService.getAPIToken();
-    if (savedToken) {
-      this.apiService.setApiToken(savedToken);
-      this._updateCreditsDisplay();
-    }
     
     // Set up event listeners
     this._setupEventListeners();
@@ -53,12 +46,6 @@ class ExampleGameScene extends Phaser.Scene {
         
         // Hide loading modal
         this.uiManager.hideLoadingModal();
-        
-        // Update credits display
-        this.uiManager.updateCreditsDisplay(
-          result.usage.remainingCredits,
-          result.usage.remainingGenerations
-        );
         
         // Success callback
         callback(true);
@@ -93,12 +80,8 @@ class ExampleGameScene extends Phaser.Scene {
 
     // Handle settings save
     this.events.on('save-settings', (settings) => {
-      // Save API token
-      this.storageService.saveAPIToken(settings.apiToken);
-      this.apiService.setApiToken(settings.apiToken);
-      
-      // Update credits display
-      this._updateCreditsDisplay();
+      // Save settings (no API token needed for Pollinations)
+      this.storageService.saveSettings(settings);
       
       console.log('Settings saved');
     });
@@ -150,18 +133,6 @@ class ExampleGameScene extends Phaser.Scene {
         this.uiManager.showLibraryModal(assets);
       }
     });
-  }
-
-  async _updateCreditsDisplay() {
-    try {
-      const balance = await this.apiService.getBalance();
-      this.uiManager.updateCreditsDisplay(
-        balance.remainingCredits,
-        balance.remainingGenerations
-      );
-    } catch (error) {
-      console.error('Failed to get balance:', error);
-    }
   }
 
   // Example: Show tooltip on hover

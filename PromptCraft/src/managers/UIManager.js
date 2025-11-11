@@ -27,7 +27,6 @@ export default class UIManager {
     this.tooltip = null;
     
     // HUD elements
-    this.creditsDisplay = null;
     this.assetCountDisplay = null;
     
     // Inject styles
@@ -107,8 +106,12 @@ export default class UIManager {
     // Create buttons
     const buttons = [
       { label: 'Generate', title: 'Generate new asset (G)', action: () => this.showGenerationModal() },
-      { label: 'Library', title: 'Open asset library (L)', action: () => this.showLibraryModal([]) },
-      { label: 'Settings', title: 'Open settings', action: () => this.showSettingsModal({}) },
+      { label: 'Library', title: 'Open asset library (L)', action: () => {
+        // Get assets from AssetManager if available
+        const assets = this.scene.assetManager?.getAssets() || [];
+        this.showLibraryModal(assets);
+      }},
+      { label: 'Settings', title: 'Open settings', action: () => this.showSettingsModal() },
       { label: 'Help', title: 'Show help', action: () => this.showHelpModal() }
     ];
 
@@ -118,38 +121,7 @@ export default class UIManager {
       leftSection.appendChild(button);
     });
 
-    // Right section - credits display
-    const rightSection = document.createElement('div');
-    rightSection.style.cssText = `
-      display: flex;
-      gap: 15px;
-      align-items: center;
-      color: #ffffff;
-      font-size: 14px;
-    `;
-
-    // Credits display
-    this.creditsDisplay = document.createElement('div');
-    this.creditsDisplay.id = 'credits-display';
-    this.creditsDisplay.style.cssText = `
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      padding: 5px 10px;
-      background: rgba(0, 0, 0, 0.3);
-      border: 1px solid #ffd700;
-      border-radius: 4px;
-    `;
-    this.creditsDisplay.innerHTML = `
-      <span style="color: #ffd700;">&#128176;</span>
-      <span id="credits-value">0</span> credits
-      <span style="margin-left: 10px; color: #87ceeb;">&#9889;</span>
-      <span id="generations-value">0</span> gens
-    `;
-
-    rightSection.appendChild(this.creditsDisplay);
     toolbar.appendChild(leftSection);
-    toolbar.appendChild(rightSection);
     this.container.appendChild(toolbar);
     
     console.log('Main toolbar created');
@@ -185,17 +157,7 @@ export default class UIManager {
     this.container.appendChild(this.assetCountDisplay);
   }
 
-  /**
-   * Task 3.6: Update credits display
-   */
-  updateCreditsDisplay(credits, generations) {
-    if (this.creditsDisplay) {
-      const creditsValue = this.creditsDisplay.querySelector('#credits-value');
-      const generationsValue = this.creditsDisplay.querySelector('#generations-value');
-      if (creditsValue) creditsValue.textContent = credits;
-      if (generationsValue) generationsValue.textContent = generations;
-    }
-  }
+
 
   /**
    * Task 3.6: Update asset count display
@@ -233,6 +195,9 @@ export default class UIManager {
    * Task 3.2: Show generation modal
    */
   showGenerationModal() {
+    // Close any existing modals first
+    this.hideAllModals();
+    
     const modal = this._createModal('Generate Asset');
     
     const form = document.createElement('form');
@@ -254,19 +219,113 @@ export default class UIManager {
     descGroup.appendChild(descInput);
     form.appendChild(descGroup);
 
-    // Category selection
-    const categoryGroup = this._createFormGroup('Category', 'Select asset category');
-    const categorySelect = document.createElement('select');
-    categorySelect.id = 'category';
-    categorySelect.style.cssText = this._getInputStyle();
-    ['character', 'object', 'terrain', 'decoration', 'building'].forEach(cat => {
+    // Model selection
+    const modelGroup = this._createFormGroup('Model', 'Select AI model for generation');
+    const modelSelect = document.createElement('select');
+    modelSelect.id = 'model';
+    modelSelect.style.cssText = this._getInputStyle();
+    
+    // Get models from PollinationsAPIService if available
+    const models = this.scene.assetManager?.apiService?.getAvailableModels?.() || [
+      { name: 'turbo', description: 'Fast generation, good for iteration (default)' },
+      { name: 'flux', description: 'Balanced quality and speed' },
+      { name: 'flux-realism', description: 'Photorealistic style' },
+      { name: 'flux-anime', description: 'Anime and manga style' },
+      { name: 'flux-3d', description: '3D rendered style' }
+    ];
+    
+    models.forEach(model => {
       const option = document.createElement('option');
-      option.value = cat;
-      option.textContent = cat.charAt(0).toUpperCase() + cat.slice(1);
-      categorySelect.appendChild(option);
+      option.value = model.name;
+      option.textContent = `${model.name.charAt(0).toUpperCase() + model.name.slice(1)} - ${model.description}`;
+      option.title = model.description;
+      modelSelect.appendChild(option);
     });
-    categoryGroup.appendChild(categorySelect);
-    form.appendChild(categoryGroup);
+    
+    modelGroup.appendChild(modelSelect);
+    form.appendChild(modelGroup);
+
+    // Image size inputs
+    const sizeGroup = this._createFormGroup('Image Size', 'Width and height in pixels (16-1024)');
+    const sizeContainer = document.createElement('div');
+    sizeContainer.style.cssText = `
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    `;
+    
+    const widthInput = document.createElement('input');
+    widthInput.type = 'number';
+    widthInput.id = 'image-width';
+    widthInput.value = '64';
+    widthInput.min = '16';
+    widthInput.max = '1024';
+    widthInput.placeholder = 'Width';
+    widthInput.style.cssText = this._getInputStyle();
+    widthInput.style.width = '100px';
+    
+    const xLabel = document.createElement('span');
+    xLabel.textContent = '×';
+    xLabel.style.color = '#888';
+    
+    const heightInput = document.createElement('input');
+    heightInput.type = 'number';
+    heightInput.id = 'image-height';
+    heightInput.value = '64';
+    heightInput.min = '16';
+    heightInput.max = '1024';
+    heightInput.placeholder = 'Height';
+    heightInput.style.cssText = this._getInputStyle();
+    heightInput.style.width = '100px';
+    
+    sizeContainer.appendChild(widthInput);
+    sizeContainer.appendChild(xLabel);
+    sizeContainer.appendChild(heightInput);
+    sizeGroup.appendChild(sizeContainer);
+    form.appendChild(sizeGroup);
+
+    // Seed input (optional)
+    const seedGroup = this._createFormGroup('Seed (Optional)', 'Use a seed for reproducible generations');
+    const seedInput = document.createElement('input');
+    seedInput.type = 'number';
+    seedInput.id = 'seed';
+    seedInput.placeholder = 'Leave empty for random';
+    seedInput.style.cssText = this._getInputStyle();
+    seedGroup.appendChild(seedInput);
+    form.appendChild(seedGroup);
+
+    // Transparent background checkbox
+    const transparentGroup = this._createFormGroup('Background', 'Remove background from generated image');
+    const transparentContainer = document.createElement('div');
+    transparentContainer.style.cssText = `
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    `;
+    
+    const transparentCheckbox = document.createElement('input');
+    transparentCheckbox.type = 'checkbox';
+    transparentCheckbox.id = 'transparent-bg';
+    transparentCheckbox.checked = true;
+    transparentCheckbox.style.cssText = `
+      width: 20px;
+      height: 20px;
+      cursor: pointer;
+    `;
+    
+    const transparentLabel = document.createElement('label');
+    transparentLabel.htmlFor = 'transparent-bg';
+    transparentLabel.textContent = 'Generate with transparent background';
+    transparentLabel.style.cssText = `
+      color: #ccc;
+      cursor: pointer;
+      font-size: 14px;
+    `;
+    
+    transparentContainer.appendChild(transparentCheckbox);
+    transparentContainer.appendChild(transparentLabel);
+    transparentGroup.appendChild(transparentContainer);
+    form.appendChild(transparentGroup);
 
     // Buttons
     const buttonRow = document.createElement('div');
@@ -283,10 +342,51 @@ export default class UIManager {
     
     generateBtn.addEventListener('click', (e) => {
       e.preventDefault();
+      if (!descInput.value.trim()) {
+        this.showErrorModal('Please enter an asset description');
+        return;
+      }
+      
+      const width = parseInt(widthInput.value);
+      const height = parseInt(heightInput.value);
+      
+      if (isNaN(width) || width < 16 || width > 1024) {
+        this.showErrorModal('Width must be between 16 and 1024 pixels');
+        return;
+      }
+      
+      if (isNaN(height) || height < 16 || height > 1024) {
+        this.showErrorModal('Height must be between 16 and 1024 pixels');
+        return;
+      }
+      
+      // Build description
+      let description = descInput.value.trim();
+      
+      // Ensure all descriptions include "retro game style pixel art" for consistent style
+      if (!description.toLowerCase().includes('pixel art')) {
+        description = `retro game style pixel art ${description}`;
+      }
+      
+      // Check if background removal is requested
+      const transparentBg = document.getElementById('transparent-bg').checked;
+      
+      // Add transparent background instruction to prompt as well
+      if (transparentBg && 
+          !description.toLowerCase().includes('transparent') && 
+          !description.toLowerCase().includes('no background')) {
+        description = `${description}, transparent background, no background`;
+      }
+      
       const params = {
-        description: descInput.value,
-        category: categorySelect.value
+        description: description,
+        category: 'object', // Default category for all assets
+        model: modelSelect.value,
+        imageSize: { width, height },
+        seed: seedInput.value ? parseInt(seedInput.value) : null,
+        removeBackground: transparentBg
       };
+      
       this.scene.events.emit('generate-asset', params, (success, error) => {
         if (success) {
           this.hideAllModals();
@@ -311,6 +411,9 @@ export default class UIManager {
    * Task 3.3: Show library modal
    */
   showLibraryModal(assets) {
+    // Close any existing modals first
+    this.hideAllModals();
+    
     const modal = this._createModal('Asset Library');
     
     const content = document.createElement('div');
@@ -342,7 +445,7 @@ export default class UIManager {
           border: 2px solid #4a4a4a;
           border-radius: 8px;
           padding: 10px;
-          cursor: pointer;
+          position: relative;
           transition: all 0.2s;
         `;
         card.addEventListener('mouseenter', () => {
@@ -354,15 +457,63 @@ export default class UIManager {
           card.style.transform = 'translateY(0)';
         });
 
+        // Build metadata display
+        let metadataHTML = `<div style="color: #87ceeb; font-size: 10px;">${asset.category || 'object'}</div>`;
+        
+        // Add model info if available
+        if (asset.generationParams?.model) {
+          metadataHTML += `<div style="color: #888; font-size: 9px;">Model: ${asset.generationParams.model}</div>`;
+        }
+        
+        // Add seed info if available
+        if (asset.generationParams?.seed) {
+          metadataHTML += `<div style="color: #888; font-size: 9px;">Seed: ${asset.generationParams.seed}</div>`;
+        }
+
         card.innerHTML = `
-          <div style="width: 100%; aspect-ratio: 1; background: #1a1a1a; border-radius: 4px; margin-bottom: 8px;"></div>
+          <div style="width: 100%; aspect-ratio: 1; background: #1a1a1a; border-radius: 4px; margin-bottom: 8px; cursor: pointer;"></div>
           <div style="color: #fff; font-size: 12px; margin-bottom: 4px;">${asset.name || 'Asset'}</div>
-          <div style="color: #87ceeb; font-size: 10px;">${asset.category || 'object'}</div>
+          ${metadataHTML}
+          <button class="delete-asset-btn" style="
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: #ff4444;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0.8;
+            transition: opacity 0.2s;
+          " title="Delete asset">×</button>
         `;
 
-        card.addEventListener('click', () => {
+        // Click on card to place asset
+        const imageArea = card.querySelector('div');
+        imageArea.addEventListener('click', () => {
           this.scene.events.emit('place-asset', asset);
           this.hideAllModals();
+        });
+
+        // Delete button
+        const deleteBtn = card.querySelector('.delete-asset-btn');
+        deleteBtn.addEventListener('mouseenter', () => {
+          deleteBtn.style.opacity = '1';
+        });
+        deleteBtn.addEventListener('mouseleave', () => {
+          deleteBtn.style.opacity = '0.8';
+        });
+        deleteBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (confirm(`Delete "${asset.name}"?`)) {
+            this.scene.events.emit('delete-asset', asset.id);
+          }
         });
 
         grid.appendChild(card);
@@ -378,28 +529,21 @@ export default class UIManager {
 
   /**
    * Task 3.4: Show settings modal
+   * Updated for Pollinations integration - API token section removed
    */
-  showSettingsModal(settings) {
+  showSettingsModal() {
+    // Close any existing modals first
+    this.hideAllModals();
+    
     const modal = this._createModal('Settings');
     
-    const form = document.createElement('form');
-    form.style.cssText = `
+    const content = document.createElement('div');
+    content.style.cssText = `
       display: flex;
       flex-direction: column;
-      gap: 15px;
+      gap: 20px;
       padding: 20px;
     `;
-
-    // API Token
-    const tokenGroup = this._createFormGroup('API Token', 'Your Pixellab API token');
-    const tokenInput = document.createElement('input');
-    tokenInput.type = 'password';
-    tokenInput.id = 'api-token';
-    tokenInput.value = settings.apiToken || '';
-    tokenInput.placeholder = 'Enter your API token';
-    tokenInput.style.cssText = this._getInputStyle();
-    tokenGroup.appendChild(tokenInput);
-    form.appendChild(tokenGroup);
 
     // Keyboard shortcuts reference
     const shortcutsSection = document.createElement('div');
@@ -407,20 +551,38 @@ export default class UIManager {
       padding: 15px;
       background: rgba(0, 0, 0, 0.3);
       border-radius: 4px;
-      margin-top: 10px;
+      border: 1px solid #4a4a4a;
     `;
     shortcutsSection.innerHTML = `
       <h3 style="color: #87ceeb; margin: 0 0 10px 0; font-size: 14px;">Keyboard Shortcuts</h3>
       <div style="color: #ccc; font-size: 12px; line-height: 1.8;">
         <div><strong>G:</strong> Open Asset Generator</div>
         <div><strong>L:</strong> Open Asset Library</div>
+        <div><strong>Q / E:</strong> Rotate Selected Asset Left / Right</div>
         <div><strong>ESC:</strong> Close Modals / Deselect</div>
         <div><strong>Delete:</strong> Remove Selected Asset</div>
         <div><strong>Ctrl+S:</strong> Save World</div>
         <div><strong>Ctrl+E:</strong> Export World</div>
       </div>
     `;
-    form.appendChild(shortcutsSection);
+    content.appendChild(shortcutsSection);
+
+    // About section
+    const aboutSection = document.createElement('div');
+    aboutSection.style.cssText = `
+      padding: 15px;
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 4px;
+      border: 1px solid #4a4a4a;
+    `;
+    aboutSection.innerHTML = `
+      <h3 style="color: #87ceeb; margin: 0 0 10px 0; font-size: 14px;">About</h3>
+      <div style="color: #ccc; font-size: 12px; line-height: 1.6;">
+        <p style="margin: 0 0 8px 0;">AI Sandbox Builder uses Pollinations.ai for free, open-source image generation.</p>
+        <p style="margin: 0; color: #888;">No API tokens or authentication required!</p>
+      </div>
+    `;
+    content.appendChild(aboutSection);
 
     // Buttons
     const buttonRow = document.createElement('div');
@@ -431,24 +593,13 @@ export default class UIManager {
       margin-top: 10px;
     `;
 
-    const saveBtn = this._createButton('Save', 'Save settings');
-    const cancelBtn = this._createButton('Cancel', 'Cancel');
-    
-    saveBtn.addEventListener('click', (e) => {
-      e.preventDefault();
-      this.scene.events.emit('save-settings', {
-        apiToken: tokenInput.value
-      });
-      this.hideAllModals();
-    });
-    
-    cancelBtn.addEventListener('click', () => this.hideAllModals());
+    const closeBtn = this._createButton('Close', 'Close settings');
+    closeBtn.addEventListener('click', () => this.hideAllModals());
 
-    buttonRow.appendChild(cancelBtn);
-    buttonRow.appendChild(saveBtn);
-    form.appendChild(buttonRow);
+    buttonRow.appendChild(closeBtn);
+    content.appendChild(buttonRow);
 
-    modal.content.appendChild(form);
+    modal.content.appendChild(content);
     this.activeModals.push(modal.backdrop);
   }
 
@@ -457,6 +608,9 @@ export default class UIManager {
    * Show help modal
    */
   showHelpModal() {
+    // Close any existing modals first
+    this.hideAllModals();
+    
     const modal = this._createModal('Help & Guide');
     
     const content = document.createElement('div');
@@ -470,24 +624,42 @@ export default class UIManager {
 
     content.innerHTML = `
       <h3 style="color: #87ceeb; margin-top: 0;">Welcome to AI Sandbox Builder!</h3>
-      <p>Create your own pixel art world with AI-generated assets.</p>
+      <p>Create your own pixel art world with AI-generated assets powered by Pollinations.ai - completely free!</p>
       
       <h4 style="color: #ffd700; margin-top: 20px;">Getting Started</h4>
       <ol style="padding-left: 20px;">
         <li>Press <strong>G</strong> to generate a new asset</li>
         <li>Describe what you want to create</li>
+        <li>Choose an AI model for different styles</li>
         <li>Click on the asset in your library to place it</li>
         <li>Move, rotate, and scale placed assets</li>
         <li>Save your world with <strong>Ctrl+S</strong></li>
       </ol>
       
+      <h4 style="color: #ffd700; margin-top: 20px;">AI Models</h4>
+      <ul style="padding-left: 20px;">
+        <li><strong>Turbo:</strong> Fast generation, great for quick iterations (default)</li>
+        <li><strong>Flux:</strong> Balanced quality and speed</li>
+        <li><strong>Flux-Realism:</strong> Photorealistic style</li>
+        <li><strong>Flux-Anime:</strong> Anime and manga style</li>
+        <li><strong>Flux-3D:</strong> 3D rendered style</li>
+      </ul>
+      
+      <h4 style="color: #ffd700; margin-top: 20px;">Seeds</h4>
+      <p>Use a seed number to reproduce the same image. Same seed + same prompt = same result!</p>
+      <p>Leave the seed field empty for random generation each time.</p>
+      
       <h4 style="color: #ffd700; margin-top: 20px;">Pro Tips</h4>
       <ul style="padding-left: 20px;">
         <li>Be specific in your descriptions for better results</li>
+        <li>Try different models to find the style you like</li>
         <li>Use the category selector to get appropriate styles</li>
         <li>Right-click or press ESC to cancel placement mode</li>
         <li>Double-click the player to center the camera</li>
       </ul>
+      
+      <h4 style="color: #ffd700; margin-top: 20px;">Note</h4>
+      <p style="color: #ff9999;">Animations are not currently supported. Only static images can be generated.</p>
     `;
 
     modal.content.appendChild(content);
@@ -563,6 +735,18 @@ export default class UIManager {
       }
     });
     this.activeModals = [];
+    
+    // Notify that modals are closed
+    if (this.scene && this.scene.events) {
+      this.scene.events.emit('modals-closed');
+    }
+  }
+  
+  /**
+   * Check if any modal is currently open
+   */
+  isModalOpen() {
+    return this.activeModals.length > 0;
   }
 
 
@@ -636,6 +820,17 @@ export default class UIManager {
         }
       });
     }
+    
+    // Stop keyboard events from propagating to the game
+    backdrop.addEventListener('keydown', (e) => {
+      e.stopPropagation();
+    });
+    backdrop.addEventListener('keyup', (e) => {
+      e.stopPropagation();
+    });
+    backdrop.addEventListener('keypress', (e) => {
+      e.stopPropagation();
+    });
 
     const modal = document.createElement('div');
     modal.style.cssText = `
@@ -819,6 +1014,70 @@ export default class UIManager {
     });
 
     return button;
+  }
+
+  /**
+   * Clean up UI elements
+   */
+  /**
+   * Show toast notification
+   */
+  showToast(message, type = 'info', duration = 3000) {
+    const toast = document.createElement('div');
+    toast.style.cssText = `
+      position: fixed;
+      bottom: 80px;
+      right: 20px;
+      padding: 12px 20px;
+      background: ${type === 'success' ? '#00aa00' : type === 'warning' ? '#ffd700' : type === 'error' ? '#ff6b6b' : '#87ceeb'};
+      color: #fff;
+      border-radius: 4px;
+      font-size: 14px;
+      z-index: 2000;
+      animation: fadeIn 0.3s;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+      pointer-events: auto;
+      max-width: 300px;
+    `;
+    toast.textContent = message;
+    this.container.appendChild(toast);
+    
+    setTimeout(() => {
+      if (toast.parentNode) {
+        toast.style.animation = 'fadeOut 0.3s';
+        setTimeout(() => {
+          if (toast.parentNode) {
+            toast.parentNode.removeChild(toast);
+          }
+        }, 300);
+      }
+    }, duration);
+  }
+
+  /**
+   * Show success modal
+   */
+  showSuccessModal(message) {
+    const modal = this._createModal('Success');
+    
+    const content = document.createElement('div');
+    content.style.cssText = `
+      padding: 20px;
+      text-align: center;
+    `;
+
+    content.innerHTML = `
+      <div style="font-size: 48px; color: #00aa00;">&#10004;</div>
+      <p style="color: #fff; margin: 20px 0; font-size: 14px;">${message}</p>
+    `;
+
+    const okBtn = this._createButton('OK', 'Close');
+    okBtn.style.margin = '0 auto';
+    okBtn.addEventListener('click', () => this.hideAllModals());
+    content.appendChild(okBtn);
+
+    modal.content.appendChild(content);
+    this.activeModals.push(modal.backdrop);
   }
 
   /**

@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pollinations UI Test</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: 'Courier New', monospace;
+      background: #1a1a1a;
+      color: #fff;
+    }
+    #test-container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    h1 {
+      color: #87ceeb;
+    }
+    .test-section {
+      background: #2a2a2a;
+      border: 2px solid #4a4a4a;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .test-button {
+      padding: 10px 20px;
+      background: linear-gradient(180deg, #4a4a4a 0%, #3a3a3a 100%);
+      border: 2px solid #5a5a5a;
+      border-radius: 4px;
+      color: #ffffff;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      cursor: pointer;
+      margin: 5px;
+    }
+    .test-button:hover {
+      background: linear-gradient(180deg, #5a5a5a 0%, #4a4a4a 100%);
+    }
+    .status {
+      margin-top: 10px;
+      padding: 10px;
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 4px;
+    }
+    .success {
+      color: #00aa00;
+    }
+    .error {
+      color: #ff6b6b;
+    }
+  </style>
+</head>
+<body>
+  <div id="test-container">
+    <h1>Pollinations UI Integration Test</h1>
+    
+    <div class="test-section">
+      <h2>Test 1: Generation Modal</h2>
+      <p>Click to open the generation modal and verify:</p>
+      <ul>
+        <li>✓ Description input field is present</li>
+        <li>✓ Category selector is present</li>
+        <li>✓ Model selector with 5 models (turbo, flux, flux-realism, flux-anime, flux-3d)</li>
+        <li>✓ Image size inputs (width and height)</li>
+        <li>✓ Seed input (optional)</li>
+        <li>✗ NO API token field</li>
+        <li>✗ NO credit display</li>
+        <li>✗ NO animation toggle</li>
+        <li>✗ NO Pixellab-specific parameters</li>
+      </ul>
+      <button class="test-button" onclick="testGenerationModal()">Open Generation Modal</button>
+      <div id="test1-status" class="status"></div>
+    </div>
+
+    <div class="test-section">
+      <h2>Test 2: Settings Modal</h2>
+      <p>Click to open the settings modal and verify:</p>
+      <ul>
+        <li>✓ Keyboard shortcuts are displayed</li>
+        <li>✗ NO API token field</li>
+        <li>✗ NO save button (only close button)</li>
+      </ul>
+      <button class="test-button" onclick="testSettingsModal()">Open Settings Modal</button>
+      <div id="test2-status" class="status"></div>
+    </div>
+
+    <div class="test-section">
+      <h2>Test 3: Help Modal</h2>
+      <p>Click to open the help modal and verify:</p>
+      <ul>
+        <li>✓ References Pollinations.ai</li>
+        <li>✓ Lists all 5 AI models with descriptions</li>
+        <li>✓ Explains seed functionality</li>
+        <li>✓ Notes that animations are not supported</li>
+        <li>✗ NO references to Pixellab</li>
+      </ul>
+      <button class="test-button" onclick="testHelpModal()">Open Help Modal</button>
+      <div id="test3-status" class="status"></div>
+    </div>
+
+    <div class="test-section">
+      <h2>Test 4: Toolbar</h2>
+      <p>Check the toolbar at the top and verify:</p>
+      <ul>
+        <li>✓ Generate, Library, Settings, Help buttons are present</li>
+        <li>✗ NO credit display</li>
+        <li>✗ NO generation counter</li>
+      </ul>
+      <button class="test-button" onclick="testToolbar()">Check Toolbar</button>
+      <div id="test4-status" class="status"></div>
+    </div>
+
+    <div class="test-section">
+      <h2>Test 5: Asset Library Display</h2>
+      <p>Test asset library with mock data:</p>
+      <button class="test-button" onclick="testLibraryWithSeeds()">Open Library with Seed Data</button>
+      <div id="test5-status" class="status"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import UIManager from './src/managers/UIManager.js';
+    import PollinationsAPIService from './src/services/PollinationsAPIService.js';
+
+    // Create mock scene
+    const mockScene = {
+      events: {
+        emit: (event, ...args) => {
+          console.log('Event emitted:', event, args);
+        }
+      },
+      assetManager: {
+        apiService: new PollinationsAPIService()
+      }
+    };
+
+    // Create UIManager instance
+    window.uiManager = new UIManager(mockScene);
+    window.uiManager.createMainToolbar();
+
+    // Test functions
+    window.testGenerationModal = () => {
+      window.uiManager.showGenerationModal();
+      document.getElementById('test1-status').innerHTML = '<span class="success">✓ Modal opened. Check for required fields.</span>';
+    };
+
+    window.testSettingsModal = () => {
+      window.uiManager.showSettingsModal();
+      document.getElementById('test2-status').innerHTML = '<span class="success">✓ Modal opened. Verify no API token field.</span>';
+    };
+
+    window.testHelpModal = () => {
+      window.uiManager.showHelpModal();
+      document.getElementById('test3-status').innerHTML = '<span class="success">✓ Modal opened. Check for Pollinations references.</span>';
+    };
+
+    window.testToolbar = () => {
+      const creditsDisplay = document.getElementById('credits-display');
+      if (creditsDisplay) {
+        document.getElementById('test4-status').innerHTML = '<span class="error">✗ FAIL: Credit display still exists!</span>';
+      } else {
+        document.getElementById('test4-status').innerHTML = '<span class="success">✓ PASS: No credit display found.</span>';
+      }
+    };
+
+    window.testLibraryWithSeeds = () => {
+      const mockAssets = [
+        {
+          id: '1',
+          name: 'Knight',
+          category: 'character',
+          generationParams: {
+            model: 'turbo',
+            seed: 12345
+          }
+        },
+        {
+          id: '2',
+          name: 'Tree',
+          category: 'terrain',
+          generationParams: {
+            model: 'flux-realism',
+            seed: 67890
+          }
+        },
+        {
+          id: '3',
+          name: 'Sword',
+          category: 'object',
+          generationParams: {
+            model: 'flux-anime'
+            // No seed
+          }
+        }
+      ];
+      window.uiManager.showLibraryModal(mockAssets);
+      document.getElementById('test5-status').innerHTML = '<span class="success">✓ Library opened. Check that seeds are displayed for assets that have them.</span>';
+    };
+
+    console.log('Test page loaded. UIManager initialized.');
+  </script>
+</body>
+</html>

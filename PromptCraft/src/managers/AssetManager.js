@@ -1,7 +1,7 @@
 /**
  * Asset Manager
  * Manages asset library, generation, and placement
- * Integrates with PixellabAPIService and StorageService
+ * Integrates with PollinationsAPIService and StorageService
  */
 
 import { generateUUID } from '../utils/helpers.js';
@@ -16,10 +16,11 @@ export const AssetCategory = {
 };
 
 export default class AssetManager {
-  constructor(scene, apiService, storageService) {
+  constructor(scene, apiService, storageService, bgRemovalService = null) {
     this.scene = scene;
     this.apiService = apiService;
     this.storageService = storageService;
+    this.bgRemovalService = bgRemovalService;
     
     // Asset library (in-memory cache)
     this.assets = [];
@@ -58,7 +59,7 @@ export default class AssetManager {
       category: assetData.category || 'object',
       imageData: assetData.imageData,
       frames: assetData.frames || [],
-      animationConfig: assetData.animationConfig || null,
+      animationConfig: assetData.animationConfig || null, // Preserved for backward compatibility
       generationParams: assetData.generationParams || {},
       createdAt: assetData.createdAt || new Date().toISOString(),
       usageCredits: assetData.usageCredits || 0
@@ -135,7 +136,7 @@ export default class AssetManager {
   // ==================== Asset Generation ====================
 
   /**
-   * Generate a static asset using Pixellab API
+   * Generate a static asset using Pollinations API
    * @param {Object} params - Generation parameters
    * @returns {Promise<Object>} Generated asset metadata
    */
@@ -144,14 +145,29 @@ export default class AssetManager {
     this.isGenerating = true;
 
     try {
-      // Validate API service
-      if (!this.apiService || !this.apiService.apiToken) {
-        throw new Error('API service not configured. Please set your API token.');
-      }
-
       // Call API to generate image
       console.log('Generating asset with params:', params);
-      const result = await this.apiService.generateImage(params);
+      const result = await this.apiService.generateImage({
+        description: params.description,
+        imageSize: params.imageSize,
+        model: params.model || 'turbo',
+        seed: params.seed || null,
+        nologo: true
+      });
+
+      let imageData = result.imageData;
+
+      // Apply background removal if requested and service is available
+      if (params.removeBackground && this.bgRemovalService) {
+        try {
+          console.log('Removing background from generated image...');
+          imageData = await this.bgRemovalService.removeBackground(imageData, false);
+          console.log('Background removed successfully');
+        } catch (bgError) {
+          console.warn('Background removal failed, using original image:', bgError);
+          // Continue with original image if background removal fails
+        }
+      }
 
       // Create asset metadata
       const asset = {
@@ -159,22 +175,16 @@ export default class AssetManager {
         name: params.name || params.description.substring(0, 30),
         description: params.description,
         category: params.category || 'object',
-        imageData: result.imageData,
-        frames: [], // Static image has no frames
+        imageData: imageData,
+        frames: [], // No animation support
         generationParams: {
-          textGuidanceScale: params.textGuidanceScale,
-          outline: params.outline,
-          shading: params.shading,
-          detail: params.detail,
-          view: params.view,
-          direction: params.direction,
-          isometric: params.isometric,
-          noBackground: params.noBackground,
+          description: params.description,
           imageSize: params.imageSize,
-          seed: params.seed
+          model: result.metadata.model,
+          seed: result.metadata.seed
         },
         createdAt: new Date().toISOString(),
-        usageCredits: result.usage.creditsUsed
+        usageCredits: 0 // Free service
       };
 
       // Add to library
@@ -182,10 +192,9 @@ export default class AssetManager {
 
       console.log('Asset generated successfully:', asset.name);
 
-      // Return asset and usage info
+      // Return asset
       return {
-        asset,
-        usage: result.usage
+        asset
       };
 
     } catch (error) {
@@ -207,87 +216,7 @@ export default class AssetManager {
     }
   }
 
-  /**
-   * Generate an animated asset using Pixellab API
-   * @param {Object} params - Animation generation parameters
-   * @returns {Promise<Object>} Generated animated asset metadata
-   */
-  async generateAnimatedAsset(params) {
-    // Set loading state
-    this.isGenerating = true;
 
-    try {
-      // Validate API service
-      if (!this.apiService || !this.apiService.apiToken) {
-        throw new Error('API service not configured. Please set your API token.');
-      }
-
-      // Call API to generate animation
-      console.log('Generating animated asset with params:', params);
-      const result = await this.apiService.generateAnimation(params);
-
-      // Validate frames
-      if (!result.frames || result.frames.length === 0) {
-        throw new Error('Animation generation returned no frames');
-      }
-
-      // Create asset metadata with animation config
-      const asset = {
-        id: generateUUID(),
-        name: params.name || params.description.substring(0, 30),
-        description: params.description,
-        category: params.category || 'character',
-        imageData: result.frames[0], // Use first frame as thumbnail
-        frames: result.frames,
-        animationConfig: {
-          frameRate: params.frameRate || 8,
-          repeat: -1, // Loop infinitely
-          yoyo: false
-        },
-        generationParams: {
-          action: params.action,
-          textGuidanceScale: params.textGuidanceScale,
-          imageGuidanceScale: params.imageGuidanceScale,
-          nFrames: params.nFrames,
-          startFrameIndex: params.startFrameIndex,
-          view: params.view,
-          direction: params.direction,
-          imageSize: params.imageSize,
-          seed: params.seed
-        },
-        createdAt: new Date().toISOString(),
-        usageCredits: result.usage.creditsUsed
-      };
-
-      // Add to library
-      this.addAsset(asset);
-
-      console.log('Animated asset generated successfully:', asset.name, `(${result.frames.length} frames at ${asset.animationConfig.frameRate} FPS)`);
-
-      // Return asset and usage info
-      return {
-        asset,
-        usage: result.usage
-      };
-
-    } catch (error) {
-      console.error('Animated asset generation failed:', error);
-      
-      // Format error message for user display
-      const errorMessage = this.apiService.handleAPIError(error);
-      
-      // Re-throw with formatted message
-      const formattedError = new Error(errorMessage);
-      formattedError.status = error.status;
-      formattedError.originalError = error;
-      
-      throw formattedError;
-      
-    } finally {
-      // Clear loading state
-      this.isGenerating = false;
-    }
-  }
 
   /**
    * Check if asset generation is in progress
@@ -353,73 +282,7 @@ export default class AssetManager {
     }
   }
 
-  /**
-   * Create Phaser animation from frame array
-   * @param {Array<string>} frames - Array of base64 frame data
-   * @param {string} animKey - Animation key
-   * @param {Object} options - Animation options
-   * @returns {Promise<string>} Animation key
-   */
-  async createAnimationFromFrames(frames, animKey, options = {}) {
-    try {
-      if (!frames || frames.length === 0) {
-        throw new Error('No frames provided for animation');
-      }
 
-      const {
-        frameRate = 8,
-        repeat = -1, // -1 for infinite loop
-        yoyo = false
-      } = options;
-
-      // Load all frames as textures
-      const frameKeys = [];
-      
-      for (let i = 0; i < frames.length; i++) {
-        const frameKey = `${animKey}_frame_${i}`;
-        const blobURL = this.apiService.convertToTextureURL(frames[i]);
-
-        await new Promise((resolve, reject) => {
-          this.scene.load.image(frameKey, blobURL);
-          
-          this.scene.load.once('complete', () => {
-            frameKeys.push(frameKey);
-            resolve();
-          });
-
-          this.scene.load.once('loaderror', () => {
-            reject(new Error(`Failed to load frame ${i}`));
-          });
-
-          this.scene.load.start();
-        });
-      }
-
-      // Create animation configuration
-      const animConfig = {
-        key: animKey,
-        frames: frameKeys.map(key => ({ key })),
-        frameRate,
-        repeat,
-        yoyo
-      };
-
-      // Create animation in Phaser
-      if (this.scene.anims.exists(animKey)) {
-        this.scene.anims.remove(animKey);
-      }
-      
-      this.scene.anims.create(animConfig);
-
-      console.log(`Animation created: ${animKey} (${frames.length} frames at ${frameRate} FPS)`);
-
-      return animKey;
-
-    } catch (error) {
-      console.error('Error creating animation from frames:', error);
-      throw new Error(`Failed to create animation: ${error.message}`);
-    }
-  }
 
   /**
    * Check if a texture is loaded for an asset
@@ -450,9 +313,9 @@ export default class AssetManager {
   }
 
   /**
-   * Prepare an asset for placement by loading texture and creating animation if needed
+   * Prepare an asset for placement by loading texture
    * @param {string} assetId - Asset ID
-   * @returns {Promise<Object>} Object with textureKey, animationKey, and animationConfig
+   * @returns {Promise<Object>} Object with textureKey
    */
   async prepareAssetForPlacement(assetId) {
     const asset = this.getAsset(assetId);
@@ -468,33 +331,9 @@ export default class AssetManager {
       textureKey = await this.loadAssetTexture(asset);
     }
 
-    // Prepare animation if asset has frames
-    let animationKey = null;
-    let animationConfig = null;
-
-    if (asset.frames && asset.frames.length > 1) {
-      animationKey = `anim_${asset.id}`;
-      animationConfig = asset.animationConfig || {
-        frameRate: 8,
-        repeat: -1,
-        yoyo: false
-      };
-
-      // Create animation if it doesn't exist
-      if (!this.scene.anims.exists(animationKey)) {
-        await this.createAnimationFromFrames(
-          asset.frames,
-          animationKey,
-          animationConfig
-        );
-      }
-    }
-
     return {
       assetId: asset.id,
-      textureKey,
-      animationKey,
-      animationConfig
+      textureKey
     };
   }
 
@@ -508,59 +347,24 @@ export default class AssetManager {
   getCategoryDefaults(category) {
     const defaults = {
       [AssetCategory.CHARACTER]: {
-        view: 'side',
-        direction: null,
         imageSize: { width: 64, height: 64 },
-        outline: 'medium',
-        shading: 'soft',
-        detail: 'medium',
-        isometric: false,
-        noBackground: true,
-        textGuidanceScale: 8.0
+        model: 'turbo'
       },
       [AssetCategory.OBJECT]: {
-        view: 'front',
-        direction: null,
         imageSize: { width: 64, height: 64 },
-        outline: 'medium',
-        shading: 'soft',
-        detail: 'medium',
-        isometric: false,
-        noBackground: true,
-        textGuidanceScale: 8.0
+        model: 'turbo'
       },
       [AssetCategory.TERRAIN]: {
-        view: 'high top-down',
-        direction: null,
         imageSize: { width: 32, height: 32 },
-        outline: 'thin',
-        shading: 'flat',
-        detail: 'medium',
-        isometric: false,
-        noBackground: false,
-        textGuidanceScale: 7.0
+        model: 'turbo'
       },
       [AssetCategory.DECORATION]: {
-        view: 'front',
-        direction: null,
         imageSize: { width: 48, height: 48 },
-        outline: 'medium',
-        shading: 'soft',
-        detail: 'high',
-        isometric: false,
-        noBackground: true,
-        textGuidanceScale: 8.0
+        model: 'turbo'
       },
       [AssetCategory.BUILDING]: {
-        view: 'front',
-        direction: null,
         imageSize: { width: 128, height: 128 },
-        outline: 'medium',
-        shading: 'hard',
-        detail: 'high',
-        isometric: true,
-        noBackground: true,
-        textGuidanceScale: 9.0
+        model: 'turbo'
       }
     };
 

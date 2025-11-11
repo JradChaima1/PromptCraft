@@ -36,9 +36,10 @@ export default class GameScene extends Phaser.Scene {
         // Get services from registry (set by BootScene)
         this.apiService = this.registry.get('apiService');
         this.storageService = this.registry.get('storageService');
+        this.bgRemovalService = this.registry.get('bgRemovalService');
         
         // Initialize managers
-        this.assetManager = new AssetManager(this, this.apiService, this.storageService);
+        this.assetManager = new AssetManager(this, this.apiService, this.storageService, this.bgRemovalService);
         this.worldManager = new WorldManager(this, this.storageService);
         this.inputController = new InputController(this);
         
@@ -178,14 +179,14 @@ export default class GameScene extends Phaser.Scene {
         );
         this.menuContainer.add(optionsButton);
 
-        // Credits button
-        const creditsButton = this.createPixelButton(
+        // About button
+        const aboutButton = this.createPixelButton(
             this.cameras.main.centerX,
             this.cameras.main.centerY + 100,
-            'CREDITS',
-            () => console.log('Credits clicked')
+            'ABOUT',
+            () => console.log('About clicked')
         );
-        this.menuContainer.add(creditsButton);
+        this.menuContainer.add(aboutButton);
     }
 
     createPixelButton(x, y, text, callback) {

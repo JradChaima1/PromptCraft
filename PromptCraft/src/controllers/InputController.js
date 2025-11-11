@@ -60,8 +60,9 @@ export default class InputController {
       DELETE: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.DELETE),
       G: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.G),
       L: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.L),
-      CTRL: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.CTRL),
-      E: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E)
+      Q: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.Q),
+      E: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E),
+      CTRL: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.CTRL)
     };
     
     // Mouse pointer
@@ -100,15 +101,19 @@ export default class InputController {
   registerShortcuts() {
     // G key - open asset generator
     this.keys.G.on('down', () => {
-      if (this.uiManager && !this.isPlacementMode) {
+      // Don't trigger if modal is already open
+      if (this.uiManager && !this.isPlacementMode && !this.uiManager.isModalOpen()) {
         this.uiManager.showGenerationModal();
       }
     });
     
     // L key - open asset library
     this.keys.L.on('down', () => {
-      if (this.uiManager && !this.isPlacementMode) {
-        this.uiManager.showLibraryModal();
+      // Don't trigger if modal is already open
+      if (this.uiManager && !this.isPlacementMode && !this.uiManager.isModalOpen()) {
+        // Get assets from AssetManager
+        const assets = this.scene.assetManager?.getAssets() || [];
+        this.uiManager.showLibraryModal(assets);
       }
     });
     
@@ -127,9 +132,35 @@ export default class InputController {
     
     // Delete key - remove selected asset
     this.keys.DELETE.on('down', () => {
+      // Don't trigger if modal is open
+      if (this.uiManager && this.uiManager.isModalOpen()) {
+        return;
+      }
       if (this.worldManager && this.worldManager.getSelectedAsset()) {
         const selected = this.worldManager.getSelectedAsset();
         this.worldManager.removePlacedAsset(selected.instanceId);
+      }
+    });
+    
+    // Q key - rotate selected asset left
+    this.keys.Q.on('down', () => {
+      // Don't trigger if modal is open
+      if (this.uiManager && this.uiManager.isModalOpen()) {
+        return;
+      }
+      if (this.worldManager && this.worldManager.getSelectedAsset()) {
+        this.worldManager.rotateSelectedAsset('left');
+      }
+    });
+    
+    // E key - rotate selected asset right
+    this.keys.E.on('down', () => {
+      // Don't trigger if modal is open (unless it's Ctrl+E for export)
+      if (this.uiManager && this.uiManager.isModalOpen() && !this.keys.CTRL.isDown) {
+        return;
+      }
+      if (this.worldManager && this.worldManager.getSelectedAsset() && !this.keys.CTRL.isDown) {
+        this.worldManager.rotateSelectedAsset('right');
       }
     });
     
@@ -263,6 +294,11 @@ export default class InputController {
    * Update method - called every frame
    */
   update() {
+    // Don't process game controls if a modal is open
+    if (this.uiManager && this.uiManager.isModalOpen()) {
+      return;
+    }
+    
     this.handlePlayerMovement();
   }
   

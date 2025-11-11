@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pollinations UI Validation Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 1200px;
+      margin: 20px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .test-section {
+      background: white;
+      padding: 20px;
+      margin-bottom: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    h1 { color: #333; }
+    h2 { color: #666; margin-top: 0; }
+    .test-item {
+      margin: 15px 0;
+      padding: 15px;
+      border-left: 4px solid #ddd;
+      background: #f9f9f9;
+    }
+    .test-item.pass {
+      border-left-color: #4CAF50;
+      background: #f1f8f4;
+    }
+    .test-item.fail {
+      border-left-color: #f44336;
+      background: #fef5f5;
+    }
+    .test-item.manual {
+      border-left-color: #2196F3;
+      background: #f0f7ff;
+    }
+    .test-title {
+      font-weight: bold;
+      margin-bottom: 8px;
+      color: #333;
+    }
+    .test-description {
+      color: #666;
+      font-size: 14px;
+      margin-bottom: 8px;
+    }
+    .test-status {
+      font-size: 12px;
+      padding: 4px 8px;
+      border-radius: 3px;
+      display: inline-block;
+      margin-top: 5px;
+    }
+    .status-pass {
+      background: #4CAF50;
+      color: white;
+    }
+    .status-fail {
+      background: #f44336;
+      color: white;
+    }
+    .status-manual {
+      background: #2196F3;
+      color: white;
+    }
+    button {
+      padding: 10px 20px;
+      background: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      margin: 5px;
+    }
+    button:hover { background: #45a049; }
+    .checklist {
+      list-style: none;
+      padding: 0;
+    }
+    .checklist li {
+      padding: 8px;
+      margin: 5px 0;
+      background: #f9f9f9;
+      border-radius: 4px;
+    }
+    .checklist li:before {
+      content: "☐ ";
+      margin-right: 8px;
+      font-size: 18px;
+    }
+    .checklist li.checked:before {
+      content: "☑ ";
+      color: #4CAF50;
+    }
+    code {
+      background: #f4f4f4;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🧪 Pollinations UI Validation Test</h1>
+  
+  <div class="test-section">
+    <h2>Test 8.4: Backward Compatibility</h2>
+    <p>Verify that existing Pixellab-generated assets still work correctly.</p>
+    
+    <div class="test-item manual">
+      <div class="test-title">8.4.1 Load Existing World</div>
+      <div class="test-description">
+        Test loading a world that contains Pixellab-generated assets.
+      </div>
+      <ul class="checklist">
+        <li>Open the game in browser</li>
+        <li>Load an existing world with Pixellab assets</li>
+        <li>Verify all assets display correctly</li>
+        <li>Verify no console errors</li>
+        <li>Verify asset metadata is preserved</li>
+      </ul>
+      <span class="test-status status-manual">MANUAL TEST REQUIRED</span>
+    </div>
+    
+    <div class="test-item manual">
+      <div class="test-title">8.4.2 Mixed Asset Library</div>
+      <div class="test-description">
+        Test asset library with both old (Pixellab) and new (Pollinations) assets.
+      </div>
+      <ul class="checklist">
+        <li>Generate new assets with Pollinations</li>
+        <li>Verify old Pixellab assets still appear in library</li>
+        <li>Verify both types can be placed in world</li>
+        <li>Verify both types can be deleted</li>
+        <li>Verify metadata displays correctly for both</li>
+      </ul>
+      <span class="test-status status-manual">MANUAL TEST REQUIRED</span>
+    </div>
+    
+    <div class="test-item manual">
+      <div class="test-title">8.4.3 Export/Import Compatibility</div>
+      <div class="test-description">
+        Test export and import with mixed asset types.
+      </div>
+      <ul class="checklist">
+        <li>Create world with mixed assets</li>
+        <li>Export world to JSON</li>
+        <li>Clear localStorage</li>
+        <li>Import the JSON file</li>
+        <li>Verify all assets restored correctly</li>
+      </ul>
+      <span class="test-status status-manual">MANUAL TEST REQUIRED</span>
+    </div>
+    
+    <div class="test-item manual">
+      <div class="test-title">8.4.4 No Crashes or Errors</div>
+      <div class="test-description">
+        Verify system stability with legacy data.
+      </div>
+      <ul class="checklist">
+        <li>Open browser console (F12)</li>
+        <li>Load world with old assets</li>
+        <li>Check for JavaScript errors</li>
+        <li>Check for warning messages</li>
+        <li>Verify smooth operation</li>
+      </ul>
+      <span class="test-status status-manual">MANUAL TEST REQUIRED</span>
+    </div>
+  </div>
+
+  <div class="test-section">
+    <h2>Test 8.5: UI Changes Validation</h2>
+    <p>Verify all UI changes are correctly implemented.</p>
+    
+    <div class="test-item manual">
+      <div class="test-title">8.5.1 Generation Modal Parameters</div>
+      <div class="test-description">
+        Verify generation modal shows only Pollinations parameters.
+      </div>
+      <ul class="checklist">
+        <li>Open generation modal</li>
+        <li>Verify description input is present</li>
+        <li>Verify image size inputs are present</li>
+        <li>Verify category selector is present</li>
+        <li>Verify model selector is present</li>
+        <li>Verify seed input is present</li>
+        <li>Verify NO Pixellab parameters (outline, shading, detail, view, direction)</li>
+        <li>Verify NO animation toggle</li>
+        <li>Verify NO textGuidanceScale slider</li>
+      </ul>
+      <span class="test-status status-manual">MANUAL TEST REQUIRED</span>
+    </div>
+    
+    <div class="test-item manual">
+      <div class="test-title">8.5.2 Model Selector</div>
+      <div class="test-description">
+        Verify model selector works correctly.
+      </div>
+      <ul class="checklist">
+        <li>Open generation modal</li>
+        <li>Locate model selector dropdown</li>
+        <li>Verify "turbo" is default selection</li>
+        <li>Verify all models available: turbo, flux, flux-realism, flux-anime, flux-3d</li>
+        <li>Verify tooltips/descriptions for each model</li>
+        <li>Select different model and generate</li>
+        <li>Verify selected model is used</li>
+      </ul>
+      <span class="test-status status-manual">MANUAL TEST REQUIRED</span>
+    </div>
+    
+    <div class="test-item manual">
+      <div class="test-title">8.5.3 Seed Input</div>
+      <div class="test-description">
+        Verify seed input works correctly.
+      </div>
+      <ul class="checklist">
+        <li>Open generation modal</li>
+        <li>Locate seed input field</li>
+        <li>Verify it accepts numeric input</li>
+        <li>Verify it can be left empty (optional)</li>
+        <li>Verify tooltip explains reproducibility</li>
+        <li>Generate with specific seed</li>
+        <li>Verify seed is saved in asset metadata</li>
+        <li>Verify seed displays in asset library</li>
+      </ul>
+      <span class="test-status status-manual">MANUAL TEST REQUIRED</span>
+    </div>
+    
+    <div class="test-item manual">
+      <div class="test-title">8.5.4 No Credit Displays</div>
+      <div class="test-description">
+        Verify all credit/balance displays are removed.
+      </div>
+      <ul class="checklist">
+        <li>Open the game</li>
+        <li>Check HUD - verify NO credit counter</li>
+        <li>Check HUD - verify NO generation counter</li>
+        <li>Open generation modal - verify NO credit cost display</li>
+        <li>Open settings - verify NO balance display</li>
+        <li>Generate asset - verify NO credit deduction message</li>
+      </ul>
+      <span class="test-status status-manual">MANUAL TEST REQUIRED</span>
+    </div>
+    
+    <div class="test-item manual">
+      <div class="test-title">8.5.5 No API Token Prompts</div>
+      <div class="test-description">
+        Verify all API token UI is removed.
+      </div>
+      <ul class="checklist">
+        <li>Start fresh (clear localStorage)</li>
+        <li>Open the game</li>
+        <li>Verify NO API token prompt on startup</li>
+        <li>Open settings modal</li>
+        <li>Verify NO API token input field</li>
+        <li>Verify NO token validation UI</li>
+        <li>Verify NO "save token" button</li>
+        <li>Try to generate - verify NO authentication required</li>
+      </ul>
+      <span class="test-status status-manual">MANUAL TEST REQUIRED</span>
+    </div>
+    
+    <div class="test-item manual">
+      <div class="test-title">8.5.6 Help Documentation</div>
+      <div class="test-description">
+        Verify help documentation is updated.
+      </div>
+      <ul class="checklist">
+        <li>Open help/documentation</li>
+        <li>Verify references to "Pollinations" (not "Pixellab")</li>
+        <li>Verify model descriptions are present</li>
+        <li>Verify seed usage is explained</li>
+        <li>Verify animation note: "not currently supported"</li>
+        <li>Verify NO references to API tokens</li>
+        <li>Verify NO references to credits/costs</li>
+      </ul>
+      <span class="test-status status-manual">MANUAL TEST REQUIRED</span>
+    </div>
+  </div>
+
+  <div class="test-section">
+    <h2>Automated Code Checks</h2>
+    <p>Automated verification of code changes.</p>
+    
+    <button onclick="runCodeChecks()">Run Code Checks</button>
+    <div id="code-check-results"></div>
+  </div>
+
+  <script type="module">
+    window.runCodeChecks = async function() {
+      const container = document.getElementById('code-check-results');
+      container.innerHTML = '<p>Running automated checks...</p>';
+      
+      const checks = [];
+      
+      // Check 1: PollinationsAPIService exists
+      try {
+        const module = await import('./src/services/PollinationsAPIService.js');
+        if (module.default) {
+          checks.push({
+            name: 'PollinationsAPIService exists',
+            status: 'pass',
+            message: 'Service file found and exports default class'
+          });
+        } else {
+          checks.push({
+            name: 'PollinationsAPIService exists',
+            status: 'fail',
+            message: 'Service file found but no default export'
+          });
+        }
+      } catch (error) {
+        checks.push({
+          name: 'PollinationsAPIService exists',
+          status: 'fail',
+          message: `Service file not found: ${error.message}`
+        });
+      }
+      
+      // Check 2: Service has required methods
+      try {
+        const module = await import('./src/services/PollinationsAPIService.js');
+        const service = new module.default();
+        const requiredMethods = [
+          'generateImage',
+          'buildPollinationsURL',
+          'fetchImageFromURL',
+          'getAvailableModels',
+          'getDefaultModel',
+          'handleAPIError'
+        ];
+        
+        const missingMethods = requiredMethods.filter(method => typeof service[method] !== 'function');
+        
+        if (missingMethods.length === 0) {
+          checks.push({
+            name: 'Service has required methods',
+            status: 'pass',
+            message: 'All required methods present'
+          });
+        } else {
+          checks.push({
+            name: 'Service has required methods',
+            status: 'fail',
+            message: `Missing methods: ${missingMethods.join(', ')}`
+          });
+        }
+      } catch (error) {
+        checks.push({
+          name: 'Service has required methods',
+          status: 'fail',
+          message: `Error checking methods: ${error.message}`
+        });
+      }
+      
+      // Check 3: Models are defined
+      try {
+        const module = await import('./src/services/PollinationsAPIService.js');
+        const service = new module.default();
+        const models = service.getAvailableModels();
+        const expectedModels = ['turbo', 'flux', 'flux-realism', 'flux-anime', 'flux-3d'];
+        const modelNames = models.map(m => m.name);
+        const allPresent = expectedModels.every(m => modelNames.includes(m));
+        
+        if (allPresent) {
+          checks.push({
+            name: 'All models defined',
+            status: 'pass',
+            message: `Found all ${expectedModels.length} models`
+          });
+        } else {
+          checks.push({
+            name: 'All models defined',
+            status: 'fail',
+            message: `Expected models: ${expectedModels.join(', ')}, Found: ${modelNames.join(', ')}`
+          });
+        }
+      } catch (error) {
+        checks.push({
+          name: 'All models defined',
+          status: 'fail',
+          message: `Error checking models: ${error.message}`
+        });
+      }
+      
+      // Check 4: Default model is turbo
+      try {
+        const module = await import('./src/services/PollinationsAPIService.js');
+        const service = new module.default();
+        const defaultModel = service.getDefaultModel();
+        
+        if (defaultModel === 'turbo') {
+          checks.push({
+            name: 'Default model is turbo',
+            status: 'pass',
+            message: 'Default model correctly set to "turbo"'
+          });
+        } else {
+          checks.push({
+            name: 'Default model is turbo',
+            status: 'fail',
+            message: `Expected "turbo", got "${defaultModel}"`
+          });
+        }
+      } catch (error) {
+        checks.push({
+          name: 'Default model is turbo',
+          status: 'fail',
+          message: `Error checking default model: ${error.message}`
+        });
+      }
+      
+      // Display results
+      let html = '<div style="margin-top: 20px;">';
+      checks.forEach(check => {
+        const statusClass = check.status === 'pass' ? 'pass' : 'fail';
+        html += `
+          <div class="test-item ${statusClass}">
+            <div class="test-title">${check.name}</div>
+            <div class="test-description">${check.message}</div>
+            <span class="test-status status-${check.status}">${check.status.toUpperCase()}</span>
+          </div>
+        `;
+      });
+      html += '</div>';
+      
+      container.innerHTML = html;
+    };
+  </script>
+</body>
+</html>

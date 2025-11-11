@@ -4,7 +4,7 @@
  */
 
 export const API_CONFIG = {
-  BASE_URL: import.meta.env.VITE_PIXELLAB_API_URL || 'https://api.pixellab.ai/v2',
+  BASE_URL: 'https://image.pollinations.ai/prompt/',
   MAX_RETRIES: 3,
   TIMEOUT: 30000 // 30 seconds
 };
@@ -84,7 +84,6 @@ export const GENERATION_DEFAULTS = {
 };
 
 export const STORAGE_KEYS = {
-  API_TOKEN: 'pixellab_api_token',
   ASSET_LIBRARY: 'asset_library',
   WORLD_STATE: 'world_state',
   SETTINGS: 'game_settings'

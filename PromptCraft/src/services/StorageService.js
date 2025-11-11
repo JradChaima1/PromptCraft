@@ -6,7 +6,6 @@
 export default class StorageService {
   constructor() {
     this.storageKeys = {
-      API_TOKEN: 'pixellab_api_token',
       ASSET_LIBRARY: 'asset_library',
       WORLD_STATE: 'world_state',
       SETTINGS: 'game_settings'
@@ -15,49 +14,6 @@ export default class StorageService {
     // Compression settings
     this.compressionEnabled = true;
     this.compressionThreshold = 50000; // Compress if data > 50KB
-  }
-
-  // ==================== API Token Methods ====================
-
-  /**
-   * Save API token to storage
-   * @param {string} token - Pixellab API token
-   */
-  saveAPIToken(token) {
-    try {
-      localStorage.setItem(this.storageKeys.API_TOKEN, token);
-      return true;
-    } catch (error) {
-      console.error('Failed to save API token:', error);
-      this._handleStorageError(error);
-      return false;
-    }
-  }
-
-  /**
-   * Get API token from storage
-   * @returns {string|null} API token or null if not found
-   */
-  getAPIToken() {
-    try {
-      return localStorage.getItem(this.storageKeys.API_TOKEN);
-    } catch (error) {
-      console.error('Failed to get API token:', error);
-      return null;
-    }
-  }
-
-  /**
-   * Clear API token from storage
-   */
-  clearAPIToken() {
-    try {
-      localStorage.removeItem(this.storageKeys.API_TOKEN);
-      return true;
-    } catch (error) {
-      console.error('Failed to clear API token:', error);
-      return false;
-    }
   }
 
   // ==================== Asset Library Methods ====================

@@ -9,15 +9,14 @@
 
 /*
 import AssetManager from '../managers/AssetManager.js';
-import PixellabAPIService from '../services/PixellabAPIService.js';
+import PollinationsAPIService from '../services/PollinationsAPIService.js';
 import StorageService from '../services/StorageService.js';
 
 class GameScene extends Phaser.Scene {
   create() {
     // Initialize services
     const storageService = new StorageService();
-    const apiToken = storageService.getAPIToken();
-    const apiService = new PixellabAPIService(apiToken);
+    const apiService = new PollinationsAPIService();
     
     // Initialize AssetManager
     this.assetManager = new AssetManager(this, apiService, storageService);
@@ -137,7 +136,7 @@ class GameScene extends Phaser.Scene {
 
 // Key Features:
 // 1. Asset Library Management - Add, remove, get assets
-// 2. Asset Generation - Static and animated assets via Pixellab API
+// 2. Asset Generation - Static assets via Pollinations API
 // 3. Texture Loading - Convert base64 to Phaser textures with caching
 // 4. Category System - Predefined defaults for different asset types
 // 5. Error Handling - User-friendly error messages for all API errors
